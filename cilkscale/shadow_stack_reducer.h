@@ -6,6 +6,7 @@
 #include <cstdlib>
 
 #include <cilk/cilk.h>
+#include <cilk/cilk_api.h>
 #include <cilk/reducer.h>
 
 #include "shadow_stack.h"
@@ -75,7 +76,6 @@ private:
   }
 public:
   shadow_stack_reducer() : m_imp() {}
-  // shadow_stack_reducer(shadow_stack_t &&init) : m_imp(init) {}
   shadow_stack_reducer(cilk::move_in_wrapper<shadow_stack_t> w) : m_imp(w) {}
 
   shadow_stack_t &get_view() { return m_imp(); }
@@ -84,8 +84,91 @@ public:
   void move_out(shadow_stack_t &obj) { obj.move_in(std::move(m_imp())); }
 
   shadow_stack_frame_t &peek_bot() const { return m_imp().peek_bot(); }
-  shadow_stack_frame_t &push(frame_type type) { return m_imp().push(type); }
+  shadow_stack_frame_t &push(frame_type type,
+                             cilk_time_t p_contin_work = cilk_time_t::zero(),
+                             cilk_time_t p_contin_span = cilk_time_t::zero(),
+                             cilk_time_t p_contin_bspan = cilk_time_t::zero()) {
+    return m_imp().push(type, p_contin_work, p_contin_span, p_contin_bspan);
+  }
   shadow_stack_frame_t &pop() { return m_imp().pop(); }
+};
+
+class shadow_stack_top_bot_monoid
+    : public cilk::monoid_base<shadow_stack_top_bot_t> {
+public:
+  static void identity(shadow_stack_top_bot_t *view) {
+    ::new((void*) view) shadow_stack_top_bot_t(frame_type::SPAWNER);
+  }
+
+  static void reduce(shadow_stack_top_bot_t *left,
+                     shadow_stack_top_bot_t *right) {
+    shadow_stack_frame_t &l_bot = *left->bot;
+    shadow_stack_frame_t &r_bot = *right->bot;
+
+    assert(frame_type::SPAWNER == r_bot.type);
+    assert(right->bot == &right->top);
+    // assert(right->bot == right->top);
+
+#if TRACE_CALLS
+    fprintf(stderr, "left contin_work = %ld\nleft achild_work = %ld\n"
+            "right contin_work = %ld\nright achild_work = %ld\n",
+            l_bot.contin_work, l_bot.achild_work,
+            r_bot.contin_work, r_bot.achild_work);
+    fprintf(stderr, "left contin = %ld\nleft child = %ld\n"
+            "right contin = %ld\nright child = %ld\n",
+            l_bot.contin_span, l_bot.lchild_span,
+            r_bot.contin_span, r_bot.lchild_span);
+    fprintf(stderr, "left contin bspan = %ld\nleft child bspan = %ld\n"
+            "right contin bspan = %ld\nright child bspan = %ld\n",
+            l_bot.contin_bspan, l_bot.lchild_bspan,
+            r_bot.contin_bspan, r_bot.lchild_bspan);
+#endif
+
+    // Add the work variables from the right stack into the left.
+    l_bot.contin_work += r_bot.contin_work;
+    l_bot.achild_work += r_bot.achild_work;
+
+    // If the left stack has a longer path from the root to the end of its
+    // longest child, set this new span in keft.
+    if (l_bot.contin_span + r_bot.lchild_span > l_bot.lchild_span) {
+      l_bot.lchild_span = l_bot.contin_span + r_bot.lchild_span;
+    }
+    // Add the continuation span from the right stack into the left.
+    l_bot.contin_span += r_bot.contin_span;
+
+    // If the left stack has a longer path from the root to the end of its
+    // longest child, set this new span in keft.
+    if (l_bot.contin_bspan + r_bot.lchild_bspan > l_bot.lchild_bspan) {
+      l_bot.lchild_bspan = l_bot.contin_bspan + r_bot.lchild_bspan;
+    }
+    // Add the continuation span from the right stack into the left.
+    l_bot.contin_bspan += r_bot.contin_bspan;
+  }
+};
+
+class shadow_stack_top_bot_reducer {
+private:
+  cilk::reducer<shadow_stack_top_bot_monoid> m_imp;
+  inline const cilk::reducer<shadow_stack_top_bot_monoid> *get_m_imp() const {
+    return &m_imp;
+  }
+  inline cilk::reducer<shadow_stack_top_bot_monoid> *get_m_imp() {
+    return &m_imp;
+  }
+
+public:
+  shadow_stack_top_bot_reducer() : m_imp() {}
+  shadow_stack_top_bot_reducer(cilk::move_in_wrapper<shadow_stack_top_bot_t> w)
+      : m_imp(w) {}
+
+  shadow_stack_top_bot_t &get_view() { return m_imp(); }
+  const shadow_stack_top_bot_t &get_view() const { return m_imp(); }
+
+  void move_out(shadow_stack_top_bot_t &obj) { obj.move_in(std::move(m_imp())); }
+
+  shadow_stack_frame_t &get_top() { return m_imp().get_top(); }
+  shadow_stack_frame_t &get_bot() const { return m_imp().get_bot(); }
+  void set_bot(shadow_stack_frame_t &frame) { m_imp().set_bot(frame); }
 };
 
 #endif

@@ -14,7 +14,7 @@
 
 #if CILKSAN_DEBUG
 enum EventType_t last_event = NONE;
-static bool CILKSAN_INITIALIZED = false;
+extern bool CILKSAN_INITIALIZED;
 #endif
 
 // declared in drivercsan.cpp

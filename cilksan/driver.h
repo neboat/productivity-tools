@@ -53,7 +53,7 @@ extern allocfn_prop_t *allocfn_prop;
 extern uintptr_t *free_pc;
 
 // Flag to track whether Cilksan is initialized.
-extern bool TOOL_INITIALIZED;
+extern bool CILKSAN_INITIALIZED;
 
 // Flag to globally enable/disable instrumentation.
 extern bool instrumentation;

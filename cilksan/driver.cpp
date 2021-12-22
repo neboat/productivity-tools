@@ -60,7 +60,7 @@ static csi_id_t total_free = 0;
 const LockID_t atomic_lock_id = 0;
 
 // Flag to track whether Cilksan is initialized.
-bool TOOL_INITIALIZED = false;
+bool CILKSAN_INITIALIZED = false;
 
 // Flag to globally enable/disable instrumentation.
 bool instrumentation = false;
@@ -234,7 +234,7 @@ static void csan_destroy(void) {
 
 CilkSanImpl_t::~CilkSanImpl_t() {
   csan_destroy();
-  TOOL_INITIALIZED = false;
+  CILKSAN_INITIALIZED = false;
 }
 
 static void init_internal() {
@@ -334,7 +334,7 @@ static inline void handle_stack_switch(uintptr_t bp, uintptr_t sp) {
 CILKSAN_API void __csan_func_entry(const csi_id_t func_id,
                                    const void *bp, const void *sp,
                                    const func_prop_t prop) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   { // Handle tool initialization as a special case.
@@ -405,7 +405,7 @@ CILKSAN_API void __csan_func_entry(const csi_id_t func_id,
 CILKSAN_API void __csan_func_exit(const csi_id_t func_exit_id,
                                   const csi_id_t func_id,
                                   const func_exit_prop_t prop) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check())
@@ -672,7 +672,7 @@ CILKSAN_API void __csan_detach_continue(const csi_id_t detach_continue_id,
 
 // Hook called at a sync
 CILKSAN_API void __csan_sync(csi_id_t sync_id, const unsigned sync_reg) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check())
@@ -699,7 +699,7 @@ CILKSAN_API void __csan_sync(csi_id_t sync_id, const unsigned sync_reg) {
 CILKSAN_API
 void __csan_load(csi_id_t load_id, const void *addr, int32_t size,
                  load_prop_t prop) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check()) {
@@ -740,7 +740,7 @@ void __csan_load(csi_id_t load_id, const void *addr, int32_t size,
 CILKSAN_API
 void __csan_large_load(csi_id_t load_id, const void *addr, size_t size,
                        load_prop_t prop) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check()) {
@@ -781,7 +781,7 @@ void __csan_large_load(csi_id_t load_id, const void *addr, size_t size,
 CILKSAN_API
 void __csan_store(csi_id_t store_id, const void *addr, int32_t size,
                   store_prop_t prop) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check()) {
@@ -822,7 +822,7 @@ void __csan_store(csi_id_t store_id, const void *addr, int32_t size,
 CILKSAN_API
 void __csan_large_store(csi_id_t store_id, const void *addr, size_t size,
                         store_prop_t prop) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check()) {
@@ -866,7 +866,7 @@ void __csan_large_store(csi_id_t store_id, const void *addr, size_t size,
 CILKSAN_API
 void __csi_after_alloca(const csi_id_t alloca_id, const void *addr,
                         size_t size, const alloca_prop_t prop) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check())
@@ -895,7 +895,7 @@ CILKSAN_API
 void __csan_after_allocfn(const csi_id_t allocfn_id, const void *addr,
                           size_t size, size_t num, size_t alignment,
                           const void *oldaddr, const allocfn_prop_t prop) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check())
@@ -985,7 +985,7 @@ CILKSAN_API void __csan_alloc_posix_memalign(const csi_id_t allocfn_id,
                                              const allocfn_prop_t prop,
                                              int result, void **ptr,
                                              size_t alignment, size_t size) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check())
@@ -1009,7 +1009,7 @@ CILKSAN_API void __csan_alloc_strdup(const csi_id_t allocfn_id,
                                      unsigned MAAP_count,
                                      const allocfn_prop_t prop, char *result,
                                      const char *str) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check())
@@ -1064,7 +1064,7 @@ CILKSAN_API void __csan_alloc_strndup(const csi_id_t allocfn_id,
                                       unsigned MAAP_count,
                                       const allocfn_prop_t prop, char *result,
                                       const char *str, size_t size) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check())
@@ -1119,7 +1119,7 @@ CILKSAN_API void __csan_alloc_strndup(const csi_id_t allocfn_id,
 CILKSAN_API
 void __csan_after_free(const csi_id_t free_id, const void *ptr,
                        const free_prop_t prop) {
-  if (!TOOL_INITIALIZED)
+  if (!CILKSAN_INITIALIZED)
     return;
 
   if (!should_check())
@@ -1260,7 +1260,7 @@ static void initialize_memory_functions() {
 //   void *r = real_malloc(new_size);
 //   enable_checking();
 
-//   if (TOOL_INITIALIZED && should_check()) {
+//   if (CILKSAN_INITIALIZED && should_check()) {
 //     disable_checking();
 //     malloc_sizes.insert({(uintptr_t)r, new_size});
 //     // cilksan_clear_shadow_memory((size_t)r, (size_t)r+malloc_usable_size(r)-1);
@@ -1283,7 +1283,7 @@ static void initialize_memory_functions() {
 //   void *r = real_calloc(num, s);
 //   enable_checking();
 
-//   if (TOOL_INITIALIZED && should_check()) {
+//   if (CILKSAN_INITIALIZED && should_check()) {
 //     disable_checking();
 //     malloc_sizes.insert({(uintptr_t)r, s});
 //     // cilksan_clear_shadow_memory((size_t)r, (size_t)r+malloc_usable_size(r)-1);
@@ -1306,7 +1306,7 @@ static void initialize_memory_functions() {
 //   real_free(ptr);
 //   enable_checking();
 
-//   if (TOOL_INITIALIZED && should_check()) {
+//   if (CILKSAN_INITIALIZED && should_check()) {
 //     disable_checking();
 //     auto iter = malloc_sizes.find((uintptr_t)ptr);
 //     if (iter != malloc_sizes.end()) {
@@ -1333,7 +1333,7 @@ static void initialize_memory_functions() {
 //   void *r = real_realloc(ptr, s);
 //   enable_checking();
 
-//   if (TOOL_INITIALIZED && should_check()) {
+//   if (CILKSAN_INITIALIZED && should_check()) {
 //     disable_checking();
 //     // Treat the old pointer ptr as freed and the new pointer r as freshly
 //     // malloc'd.
@@ -1364,7 +1364,7 @@ void *mmap(void *start, size_t len, int prot, int flags, int fd, off_t offset) {
   void *r = real_mmap(start, len, prot, flags, fd, offset);
   enable_checking();
 
-  if (TOOL_INITIALIZED && should_check()) {
+  if (CILKSAN_INITIALIZED && should_check()) {
     CheckingRAII nocheck;
     CilkSanImpl.record_alloc((size_t)r, len, 0);
     CilkSanImpl.clear_shadow_memory((size_t)r, len);
@@ -1392,7 +1392,7 @@ void *mmap64(void *start, size_t len, int prot, int flags, int fd, off64_t offse
   void *r = real_mmap64(start, len, prot, flags, fd, offset);
   enable_checking();
 
-  if (TOOL_INITIALIZED && should_check()) {
+  if (CILKSAN_INITIALIZED && should_check()) {
     CheckingRAII nocheck;
     CilkSanImpl.record_alloc((size_t)r, len, 0);
     CilkSanImpl.clear_shadow_memory((size_t)r, len);
@@ -1420,7 +1420,7 @@ int munmap(void *start, size_t len) {
   int result = real_munmap(start, len);
   enable_checking();
 
-  if (TOOL_INITIALIZED && should_check() && (0 == result)) {
+  if (CILKSAN_INITIALIZED && should_check() && (0 == result)) {
     CheckingRAII nocheck;
     auto first_page = pages_to_clear.lower_bound((uintptr_t)start);
     auto last_page = pages_to_clear.upper_bound((uintptr_t)start + len);
@@ -1462,7 +1462,7 @@ void *mremap(void *start, size_t old_len, size_t len, int flags, ...) {
 #endif // defined(MREMAP_FIXED)
   enable_checking();
 
-  if (TOOL_INITIALIZED && should_check()) {
+  if (CILKSAN_INITIALIZED && should_check()) {
     CheckingRAII nocheck;
     auto iter = pages_to_clear.find((uintptr_t)start);
     if (iter != pages_to_clear.end()) {

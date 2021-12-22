@@ -176,6 +176,8 @@ typedef struct {
   uint64_t _padding : 56;
 } free_prop_t;
 
+struct __csi_stack_frame_t;
+
 void __csi_init();
 
 void __csi_unit_init(const char *const file_name,
@@ -183,9 +185,11 @@ void __csi_unit_init(const char *const file_name,
 
 ///-----------------------------------------------------------------------------
 /// Function entry/exit
-WEAK void __csi_func_entry(const csi_id_t func_id, const func_prop_t prop);
+WEAK void __csi_func_entry(struct __csi_stack_frame_t *sf,
+                           const csi_id_t func_id, const func_prop_t prop);
 
-WEAK void __csi_func_exit(const csi_id_t func_exit_id, const csi_id_t func_id,
+WEAK void __csi_func_exit(struct __csi_stack_frame_t *sf,
+                          const csi_id_t func_exit_id, const csi_id_t func_id,
                           const func_exit_prop_t prop);
 
 ///-----------------------------------------------------------------------------
@@ -211,9 +215,11 @@ WEAK void __csi_loopbody_exit(const csi_id_t loop_exit_id,
 /// Basic block entry/exit.  The bb_entry hook comes after any PHI hooks in that
 /// basic block.  The bb_exit hook comes before any hooks for terminators, e.g.,
 /// for invoke instructions.
-WEAK void __csi_bb_entry(const csi_id_t bb_id, const bb_prop_t prop);
+WEAK void __csi_bb_entry(struct __csi_stack_frame_t *sf, const csi_id_t bb_id,
+                         const bb_prop_t prop);
 
-WEAK void __csi_bb_exit(const csi_id_t bb_id, const bb_prop_t prop);
+WEAK void __csi_bb_exit(struct __csi_stack_frame_t *sf, const csi_id_t bb_id,
+                        const bb_prop_t prop);
 
 ///-----------------------------------------------------------------------------
 /// Callsite hooks
@@ -239,21 +245,26 @@ WEAK void __csi_after_store(const csi_id_t store_id, const void *addr,
 
 ///-----------------------------------------------------------------------------
 /// Hooks for Tapir control flow.
-WEAK void __csi_detach(const csi_id_t detach_id, const int32_t *has_spawned);
+WEAK void __csi_detach(struct __csi_stack_frame_t *sf, const csi_id_t detach_id,
+                       const int32_t *has_spawned);
 
-WEAK void __csi_task(const csi_id_t task_id, const csi_id_t detach_id,
-                     const task_prop_t prop);
+WEAK void __csi_task(struct __csi_stack_frame_t *sf, const csi_id_t task_id,
+                     const csi_id_t detach_id, const task_prop_t prop);
 
-WEAK void __csi_task_exit(const csi_id_t task_exit_id, const csi_id_t task_id,
+WEAK void __csi_task_exit(struct __csi_stack_frame_t *sf,
+                          const csi_id_t task_exit_id, const csi_id_t task_id,
                           const csi_id_t detach_id,
                           const task_exit_prop_t prop);
 
-WEAK void __csi_detach_continue(const csi_id_t detach_continue_id,
+WEAK void __csi_detach_continue(struct __csi_stack_frame_t *sf,
+                                const csi_id_t detach_continue_id,
                                 const csi_id_t detach_id,
                                 const detach_continue_prop_t prop);
 
-WEAK void __csi_before_sync(const csi_id_t sync_id, const int32_t *has_spawned);
-WEAK void __csi_after_sync(const csi_id_t sync_id, const int32_t *has_spawned);
+WEAK void __csi_before_sync(struct __csi_stack_frame_t *sf,
+                            const csi_id_t sync_id, const int32_t *has_spawned);
+WEAK void __csi_after_sync(struct __csi_stack_frame_t *sf,
+                           const csi_id_t sync_id, const int32_t *has_spawned);
 
 ///-----------------------------------------------------------------------------
 /// Hooks for memory allocation
@@ -295,45 +306,45 @@ typedef struct {
 // Front-end data (FED) table accessors.
 // Front-end data (FED) table accessors.  All such accessors should look like
 // accesses to constant data.
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_func_source_loc(const csi_id_t func_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_func_exit_source_loc(const csi_id_t func_exit_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_loop_source_loc(const csi_id_t loop_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_loop_exit_source_loc(const csi_id_t loop_exit_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_bb_source_loc(const csi_id_t bb_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_callsite_source_loc(const csi_id_t call_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_load_source_loc(const csi_id_t load_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_store_source_loc(const csi_id_t store_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_detach_source_loc(const csi_id_t detach_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_task_source_loc(const csi_id_t task_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_task_exit_source_loc(const csi_id_t task_exit_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *
 __csi_get_detach_continue_source_loc(const csi_id_t detach_continue_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_sync_source_loc(const csi_id_t sync_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_alloca_source_loc(const csi_id_t alloca_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_allocfn_source_loc(const csi_id_t allocfn_id);
-__attribute__((const))
+__attribute__((pure))
 const source_loc_t *__csi_get_free_source_loc(const csi_id_t free_id);
-__attribute__((const))
+__attribute__((pure))
 const sizeinfo_t *__csi_get_bb_sizeinfo(const csi_id_t bb_id);
 
-__attribute__((const))
+__attribute__((pure))
 const char *__csan_get_allocfn_str(const allocfn_prop_t prop);
-__attribute__((const))
+__attribute__((pure))
 const char *__csan_get_free_str(const free_prop_t prop);
 
 EXTERN_C_END

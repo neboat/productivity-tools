@@ -1,12 +1,19 @@
 # Build for the Cilkscale runtime support library.
 
 set(CILKSCALE_SOURCES
-  cilkscale.cpp
+  # cilkscale.cpp
+  cilkscale_csistackframe.cpp
   csanrt.cpp)
+
+set(CILKSCALE_BITCODE_SOURCE
+  cilkscale_csistackframe.cpp)
 
 set(BENCHMARK_SOURCES
   benchmark.cpp
   csanrt.cpp)
+
+set(BENCHMARK_BITCODE_SOURCE
+  benchmark.cpp)
 
 include_directories(${CILKTOOLS_SOURCE_DIR}/include)
 
@@ -33,10 +40,39 @@ set(CILKSCALE_INSTRUCTIONS_COMMON_DEFINITIONS
 set(CILKSCALE_INSTRUCTIONS_DYNAMIC_DEFINITIONS
   ${CILKSCALE_INSTRUCTIONS_COMMON_DEFINITIONS})
 
+# Setup flags and defs for cilktool bitcode build
+set(CILKSCALE_BITCODE_CFLAGS ${CILKSCALE_CFLAGS} -emit-llvm)
+set(CILKSCALE_BITCODE_DEFINITIONS ${CILKSCALE_COMMON_DEFINITIONS})
+set(CILKSCALE_INSTRUCTIONS_BITCODE_DEFINITIONS ${CILKSCALE_INSTRUCTIONS_COMMON_DEFINITIONS})
+
 # Build Cilkscale runtimes shipped with Clang.
 add_cilktools_component(cilkscale)
 
 if (APPLE)
+    add_cilktools_bitcode(cilkscale
+      OS ${CILKTOOL_SUPPORTED_OS}
+      ARCHS ${CILKSCALE_SUPPORTED_ARCH}
+      SOURCES ${CILKSCALE_BITCODE_SOURCE}
+      CFLAGS ${CILKSCALE_BITCODE_CFLAGS}
+      DEFS ${CILKSCALE_BITCODE_DEFINITIONS}
+      PARENT_TARGET cilkscale)
+
+    add_cilktools_bitcode(cilkscale-instructions
+      OS ${CILKTOOL_SUPPORTED_OS}
+      ARCHS ${CILKSCALE_SUPPORTED_ARCH}
+      SOURCES ${CILKSCALE_BITCODE_SOURCE}
+      CFLAGS ${CILKSCALE_BITCODE_CFLAGS}
+      DEFS ${CILKSCALE_INSTRUCTIONS_BITCODE_DEFINITIONS}
+      PARENT_TARGET cilkscale)
+
+    add_cilktools_bitcode(cilkscale-benchmark
+      OS ${CILKTOOL_SUPPORTED_OS}
+      ARCHS ${CILKSCALE_SUPPORTED_ARCH}
+      SOURCES ${BENCHMARK_BITCODE_SOURCE}
+      CFLAGS ${CILKSCALE_BITCODE_CFLAGS}
+      DEFS ${CILKSCALE_BITCODE_DEFINITIONS}
+      PARENT_TARGET cilkscale)
+
     add_cilktools_runtime(clang_rt.cilkscale
       STATIC
       OS ${CILKTOOL_SUPPORTED_OS}
@@ -98,6 +134,27 @@ if (APPLE)
       PARENT_TARGET cilkscale)
 else()
   foreach (arch ${CILKSCALE_SUPPORTED_ARCH})
+    add_cilktools_bitcode(cilkscale
+      ARCHS ${arch}
+      SOURCES ${CILKSCALE_BITCODE_SOURCE}
+      CFLAGS ${CILKSCALE_BITCODE_CFLAGS}
+      DEFS ${CILKSCALE_BITCODE_DEFINITIONS}
+      PARENT_TARGET cilkscale)
+
+    add_cilktools_bitcode(cilkscale-instructions
+      ARCHS ${arch}
+      SOURCES ${CILKSCALE_BITCODE_SOURCE}
+      CFLAGS ${CILKSCALE_BITCODE_CFLAGS}
+      DEFS ${CILKSCALE_INSTRUCTIONS_BITCODE_DEFINITIONS}
+      PARENT_TARGET cilkscale)
+
+    add_cilktools_bitcode(cilkscale-benchmark
+      ARCHS ${arch}
+      SOURCES ${BENCHMARK_BITCODE_SOURCE}
+      CFLAGS ${CILKSCALE_BITCODE_CFLAGS}
+      DEFS ${CILKSCALE_BITCODE_DEFINITIONS}
+      PARENT_TARGET cilkscale)
+
     add_cilktools_runtime(clang_rt.cilkscale
       STATIC
       ARCHS ${arch}

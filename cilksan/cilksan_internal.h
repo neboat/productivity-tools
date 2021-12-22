@@ -15,7 +15,7 @@
 #include "shadow_mem_allocator.h"
 #include "stack.h"
 
-extern bool TOOL_INITIALIZED;
+extern bool CILKSAN_INITIALIZED;
 
 // Forward declarations
 class SimpleShadowMem;
@@ -23,7 +23,9 @@ class SimpleShadowMem;
 // Top-level class implementing the tool.
 class CilkSanImpl_t {
 public:
-  CilkSanImpl_t() : color_report(ColorizeReports()) { TOOL_INITIALIZED = true; }
+  CilkSanImpl_t() : color_report(ColorizeReports()) {
+    CILKSAN_INITIALIZED = true;
+  }
   ~CilkSanImpl_t();
 
   MALineAllocator &getMALineAllocator(unsigned Idx) {
