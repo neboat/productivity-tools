@@ -180,6 +180,8 @@ typedef struct {
   uint64_t _padding : 56;
 } free_prop_t;
 
+struct __csi_stack_frame_t;
+
 void __csi_init();
 
 void __csi_unit_init(const char *const file_name,
@@ -187,9 +189,11 @@ void __csi_unit_init(const char *const file_name,
 
 ///-----------------------------------------------------------------------------
 /// Function entry/exit
-WEAK void __csi_func_entry(const csi_id_t func_id, const func_prop_t prop);
+WEAK void __csi_func_entry(struct __csi_stack_frame_t *sf,
+                           const csi_id_t func_id, const func_prop_t prop);
 
-WEAK void __csi_func_exit(const csi_id_t func_exit_id, const csi_id_t func_id,
+WEAK void __csi_func_exit(struct __csi_stack_frame_t *sf,
+                          const csi_id_t func_exit_id, const csi_id_t func_id,
                           const func_exit_prop_t prop);
 
 ///-----------------------------------------------------------------------------
@@ -215,9 +219,11 @@ WEAK void __csi_loopbody_exit(const csi_id_t loop_exit_id,
 /// Basic block entry/exit.  The bb_entry hook comes after any PHI hooks in that
 /// basic block.  The bb_exit hook comes before any hooks for terminators, e.g.,
 /// for invoke instructions.
-WEAK void __csi_bb_entry(const csi_id_t bb_id, const bb_prop_t prop);
+WEAK void __csi_bb_entry(struct __csi_stack_frame_t *sf, const csi_id_t bb_id,
+                         const bb_prop_t prop);
 
-WEAK void __csi_bb_exit(const csi_id_t bb_id, const bb_prop_t prop);
+WEAK void __csi_bb_exit(struct __csi_stack_frame_t *sf, const csi_id_t bb_id,
+                        const bb_prop_t prop);
 
 ///-----------------------------------------------------------------------------
 /// Callsite hooks
@@ -243,21 +249,26 @@ WEAK void __csi_after_store(const csi_id_t store_id, const void *addr,
 
 ///-----------------------------------------------------------------------------
 /// Hooks for Tapir control flow.
-WEAK void __csi_detach(const csi_id_t detach_id, const int32_t *has_spawned);
+WEAK void __csi_detach(struct __csi_stack_frame_t *sf, const csi_id_t detach_id,
+                       const int32_t *has_spawned);
 
-WEAK void __csi_task(const csi_id_t task_id, const csi_id_t detach_id,
-                     const task_prop_t prop);
+WEAK void __csi_task(struct __csi_stack_frame_t *sf, const csi_id_t task_id,
+                     const csi_id_t detach_id, const task_prop_t prop);
 
-WEAK void __csi_task_exit(const csi_id_t task_exit_id, const csi_id_t task_id,
+WEAK void __csi_task_exit(struct __csi_stack_frame_t *sf,
+                          const csi_id_t task_exit_id, const csi_id_t task_id,
                           const csi_id_t detach_id,
                           const task_exit_prop_t prop);
 
-WEAK void __csi_detach_continue(const csi_id_t detach_continue_id,
+WEAK void __csi_detach_continue(struct __csi_stack_frame_t *sf,
+                                const csi_id_t detach_continue_id,
                                 const csi_id_t detach_id,
                                 const detach_continue_prop_t prop);
 
-WEAK void __csi_before_sync(const csi_id_t sync_id, const int32_t *has_spawned);
-WEAK void __csi_after_sync(const csi_id_t sync_id, const int32_t *has_spawned);
+WEAK void __csi_before_sync(struct __csi_stack_frame_t *sf,
+                            const csi_id_t sync_id, const int32_t *has_spawned);
+WEAK void __csi_after_sync(struct __csi_stack_frame_t *sf,
+                           const csi_id_t sync_id, const int32_t *has_spawned);
 
 ///-----------------------------------------------------------------------------
 /// Hooks for memory allocation
