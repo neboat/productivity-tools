@@ -14,6 +14,9 @@
 #include "cilksan_internal.h"
 #include "debug_util.h"
 
+#include "symbolizer.h"
+#include "symbolizer_render.h"
+
 extern bool is_running_under_rr;
 
 std::ostream &outs = std::cerr;
@@ -105,6 +108,56 @@ get_src_info_str(const csan_source_loc_t *src_loc, const Decorator &d) {
   return convert.str();
 }
 
+static bool symbolize_pc(uptr pc, std::ostringstream &convert, const Decorator &d,
+			 const std::string preface) {
+  Symbolizer *symbolizer = Symbolizer::GetOrInit();
+  if (!symbolizer)
+    return false;
+
+  SymbolizedStack *frames = symbolizer->SymbolizePC(pc);
+  bool first_frame = true;
+  for (SymbolizedStack *cur = frames; cur; cur = cur->next) {
+    const AddressInfo *info = &cur->info;
+    // Filter out inlined function information from the OpenCilk
+    // runtime.
+    if (info->file &&
+        nullptr != std::strstr(info->file, "cheetah/runtime/cilk2c_inlined.c"))
+      continue;
+
+    if (first_frame)
+      convert << d.InstAddress() << "0x" << std::hex << cur->info.address;
+    else
+      convert << preface << "         " << d.InstAddress() << "inlined";
+
+    // Function name and offset, if file is unknown.
+    if (info->function) {
+      convert << d.Default() << " in " << d.Function()
+              << DemangleFunctionName(StripFunctionName(info->function, ""));
+      if (!info->file && info->function_offset != AddressInfo::kUnknown)
+        convert << "+0x" << std::hex << info->function_offset;
+    }
+    if (info->file) {
+      convert << " " << d.Filename() << StripPathPrefix(info->file, "");
+      if (info->line > 0) {
+        convert << ":" << std::dec << info->line;
+        if (info->column > 0)
+          convert << ":" << std::dec << info->column;
+      }
+    } else if (info->module) {
+      convert << " " << d.Filename() << StripPathPrefix(info->module, "");
+      if (info->module_arch != kModuleArchUnknown)
+        convert << ":" << ModuleArchToString(info->module_arch);
+      convert << "+0x" << std::hex << info->module_offset;
+    }
+    convert << d.Default();
+    if (cur->next) {
+      convert << "\n";
+      first_frame = false;
+    }
+  }
+  return true;
+}
+
 static std::string get_info_on_alloca(const csi_id_t alloca_id,
                                       const Decorator &d) {
   std::ostringstream convert;
@@ -130,15 +183,24 @@ static std::string get_info_on_alloca(const csi_id_t alloca_id,
 
   convert << d.RaceLoc();
   if (alloca_id % 2) {
-    convert << "      Call "
-            << d.InstAddress() << std::hex << pc << d.Default();
-    if (allocfn_prop[alloca_id / 2].allocfn_ty != uint8_t(-1))
-      convert << " to " << d.Function()
-              << __csan_get_allocfn_str(allocfn_prop[alloca_id / 2])
-              << d.Default();
+    convert << "      Call ";
+    // if (symbolize_pc(pc, convert, d, "  ")) {
+    //   // All set
+    // } else {
+      convert << d.InstAddress() << std::hex << pc << d.Default();
+      if (allocfn_prop[alloca_id / 2].allocfn_ty != uint8_t(-1))
+	convert << " to " << d.Function()
+		<< __csan_get_allocfn_str(allocfn_prop[alloca_id / 2])
+		<< d.Default();
+    // }
   } else {
-    convert << "     Alloc "
-            << d.InstAddress() << std::hex << pc << d.Default();
+    // symbolize_pc(pc, convert, d, "  ");
+    convert << "     Alloc ";
+    if (symbolize_pc(pc, convert, d, "  ")) {
+      // All set
+    } else {
+      convert << d.InstAddress() << std::hex << pc << d.Default();
+    }
   }
 
   if (src_loc)
@@ -149,7 +211,7 @@ static std::string get_info_on_alloca(const csi_id_t alloca_id,
 
 static std::string
 get_info_on_mem_access(const csi_id_t acc_id, ACC_TYPE type, uint8_t endpoint,
-                       const Decorator &d) {
+                       const Decorator &d, const std::string preface) {
   std::ostringstream convert;
 
   convert << d.Bold() << d.RaceLoc();
@@ -175,35 +237,39 @@ get_info_on_mem_access(const csi_id_t acc_id, ACC_TYPE type, uint8_t endpoint,
   convert << d.Default();
 
   // Get PC for this access.
+  uptr pc = (uptr)nullptr;
   if (UNKNOWN_CSI_ID != acc_id) {
-    convert << d.InstAddress();
     switch (type) {
     case LOAD_ACC:
-      convert << std::hex << load_pc[acc_id];
+      pc = load_pc[acc_id];
       break;
     case STORE_ACC:
-      convert << std::hex << store_pc[acc_id];
+      pc = store_pc[acc_id];
       break;
     case CALL_LOAD_ACC:
     case CALL_STORE_ACC:
-      convert << std::hex << call_pc[acc_id];
+      pc = call_pc[acc_id];
       break;
     case ALLOC_LOAD_ACC:
     case ALLOC_STORE_ACC:
-      convert << std::hex << allocfn_pc[acc_id];
+      pc = allocfn_pc[acc_id];
       break;
     case FREE_ACC:
-      convert << std::hex << free_pc[acc_id];
+      pc = free_pc[acc_id];
       break;
     case REALLOC_ACC:
-      convert << std::hex << allocfn_pc[acc_id];
+      pc = allocfn_pc[acc_id];
       break;
     case STACK_FREE_ACC:
-      convert << std::hex << call_pc[acc_id];
+      pc = call_pc[acc_id];
       break;
     }
-    convert << d.Default();
   }
+
+  if (symbolize_pc(pc, convert, d, preface)) {
+    // All set.
+  } else {
+    convert << d.InstAddress() << std::hex << pc << d.Default();
 
   // Get source information.
   const csan_source_loc_t *src_loc = nullptr;
@@ -236,6 +302,7 @@ get_info_on_mem_access(const csi_id_t acc_id, ACC_TYPE type, uint8_t endpoint,
   }
 
   convert << get_src_info_str(src_loc, d);
+  }
 
   // Get object information
   const obj_source_loc_t *obj_src_loc = nullptr;
@@ -262,7 +329,8 @@ get_info_on_mem_access(const csi_id_t acc_id, ACC_TYPE type, uint8_t endpoint,
   return convert.str();
 }
 
-static std::string get_info_on_call(const CallID_t &call, const Decorator &d) {
+static std::string get_info_on_call(const CallID_t &call, const Decorator &d,
+                                    const std::string preface) {
   std::ostringstream convert;
   convert << d.RaceLoc();
   switch (call.getType()) {
@@ -295,6 +363,10 @@ static std::string get_info_on_call(const CallID_t &call, const Decorator &d) {
     pc = loop_pc[call.getID()];
     break;
   }
+
+  if (symbolize_pc(pc, convert, d, preface)) {
+    // All set.
+  } else {
   convert << d.InstAddress() << std::hex << pc << d.Default();
 
   const csan_source_loc_t *src_loc = nullptr;
@@ -311,7 +383,7 @@ static std::string get_info_on_call(const CallID_t &call, const Decorator &d) {
   }
 
   convert << get_src_info_str(src_loc, d);
-
+  }
   return convert.str();
 }
 
@@ -498,9 +570,9 @@ void RaceInfo_t::print(const AccessLoc_t &first_inst,
     break;
   }
   first_acc_info =
-      get_info_on_mem_access(first_inst.getID(), first_acc_type, 0, d);
+      get_info_on_mem_access(first_inst.getID(), first_acc_type, 0, d, "| ");
   second_acc_info =
-      get_info_on_mem_access(second_inst.getID(), second_acc_type, 1, d);
+      get_info_on_mem_access(second_inst.getID(), second_acc_type, 1, d, "||");
 
   // Extract the two call stacks
   int first_call_stack_size = first_inst.getCallStackSize();
@@ -518,27 +590,29 @@ void RaceInfo_t::print(const AccessLoc_t &first_inst,
   // Print the two accesses involved in the race
   outs << d.Bold() << "*  " << d.Default() << first_acc_info << "\n";
   for (int i = first_call_stack_size - 1; i >= divergence; --i)
-    outs << "+   " << get_info_on_call(first_call_stack[i].first, d) << "\n";
+    outs << "+   " << get_info_on_call(first_call_stack[i].first, d, "| ")
+         << "\n";
   outs << "|" << d.Bold() << "* " << d.Default() << second_acc_info << "\n";
   for (int i = second_call_stack_size - 1; i >= divergence; --i)
-    outs << "|+  " << get_info_on_call(second_call_stack[i].first, d) << "\n";
+    outs << "|+  " << get_info_on_call(second_call_stack[i].first, d, "||")
+         << "\n";
 
   // Print the common calling context
   if (divergence > 0) {
     outs << "\\| Common calling context\n";
     for (int i = divergence - 1; i >= 0; --i)
-      outs << " +  " << get_info_on_call(first_call_stack[i].first, d) << "\n";
+      outs << " +  " << get_info_on_call(first_call_stack[i].first, d, "  ") << "\n";
   }
 
   // Print the allocation
   if (alloc_inst.isValid()) {
-    outs << "   Allocation context\n";
+    outs << "   Allocation\n";
     const csi_id_t alloca_id = alloc_inst.getID();
     outs << "    " << get_info_on_alloca(alloca_id, d) << "\n";
 
     auto alloc_call_stack = get_call_stack(alloc_inst);
     for (int i = alloc_inst.getCallStackSize() - 1; i >= 0; --i)
-      outs << "    " << get_info_on_call(alloc_call_stack[i].first, d) << "\n";
+      outs << "    " << get_info_on_call(alloc_call_stack[i].first, d, "  ") << "\n";
   }
 
   outs << "\n";
