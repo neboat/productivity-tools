@@ -4,10 +4,28 @@
 
 #include <cstdint>
 #include <mutex>
-#include <string>
+#include <cstring>
 #include <sys/mman.h>
 
 #include "debug_util.h"
+
+#if defined(__linux__)
+#  define SANITIZER_LINUX 1
+#else
+#  define SANITIZER_LINUX 0
+#endif
+
+#if defined(__GLIBC__)
+#  define SANITIZER_GLIBC 1
+#else
+#  define SANITIZER_GLIBC 0
+#endif
+
+#if defined(__FreeBSD__)
+#  define SANITIZER_FREEBSD 1
+#else
+#  define SANITIZER_FREEBSD 0
+#endif
 
 #if defined(__APPLE__)
 #  define SANITIZER_MAC 1
@@ -22,8 +40,16 @@
 #  define SANITIZER_OSX 0
 #endif
 
-#if SANITIZER_MAC
-#include <crt_externs.h> // for _NSGetArgv and _NSGetEnviron
+#if __LP64__
+#  define SANITIZER_WORDSIZE 64
+#else
+#  define SANITIZER_WORDSIZE 32
+#endif
+
+#if SANITIZER_WORDSIZE == 64
+#  define FIRST_32_SECOND_64(a, b) (b)
+#else
+#  define FIRST_32_SECOND_64(a, b) (a)
 #endif
 
 typedef uintptr_t uptr;
@@ -53,6 +79,7 @@ using Mutex = std::mutex;
 
 #define CHECK(a)       cilksan_assert((a))
 #define CHECK_EQ(a, b) cilksan_assert((u64)(a) == (u64)(b))
+#define CHECK_GE(a, b) cilksan_assert((u64)(a) >= (u64)(b))
 #define CHECK_GT(a, b) cilksan_assert((u64)(a) > (u64)(b))
 #define CHECK_LE(a, b) cilksan_assert((u64)(a) <= (u64)(b))
 #define CHECK_LT(a, b) cilksan_assert((u64)(a) < (u64)(b))
@@ -61,7 +88,15 @@ using Mutex = std::mutex;
 
 #define UNIMPLEMENTED() cilksan_assert(false && "unimplemented")
 
+#define FORMAT(f, a)  __attribute__((format(printf, f, a)))
+
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
+
+#if SANITIZER_MAC
+#include "symbolizer_mac.h"
+#elif SANITIZER_LINUX
+#include "symbolizer_linux.h"
+#endif
 
 // I/O
 // Define these as macros so we can use them in linker initialized global
@@ -82,6 +117,12 @@ inline const char *StripModuleName(const char *module) {
   return module;
 }
 
+char **GetEnviron();
+
+uptr ReadBinaryName(/*out*/char *buf, uptr buf_len);
+uptr ReadBinaryNameCached(/*out*/char *buf, uptr buf_len);
+uptr ReadLongProcessName(/*out*/ char *buf, uptr buf_len);
+
 inline bool internal_iserror(uptr retval, int *rverrno) {
   if (retval == (uptr)-1) {
     if (rverrno)
@@ -100,23 +141,7 @@ inline const char *internal_strchrnul(const char *s, int c) {
 }
 
 #if SANITIZER_MAC
-static inline char **GetEnviron() {
-  char ***env_ptr = _NSGetEnviron();
-  if (!env_ptr) {
-    // Report("_NSGetEnviron() returned NULL. Please make sure __asan_init() is "
-    //        "called after libSystem_initializer().\n");
-    CHECK(env_ptr);
-  }
-  char **environ = *env_ptr;
-  CHECK(environ);
-  return environ;
-}
-#else
-static inline char **GetEnviron() {
-  char **argv, **envp;
-  GetArgsAndEnv(&argv, &envp);
-  return envp;
-}
+fd_t internal_spawn(const char *argv[], const char *envp[], pid_t *pid);
 #endif
 
 inline uptr GetPageSizeCached() {
@@ -518,19 +543,25 @@ class InternalMmapVector : public InternalMmapVectorNoCtor<T> {
   InternalMmapVector &operator=(InternalMmapVector &&) = delete;
 };
 
+class InternalScopedString {
+ public:
+  InternalScopedString() : buffer_(1) { buffer_[0] = '\0'; }
+
+  uptr length() const { return buffer_.size() - 1; }
+  void clear() {
+    buffer_.resize(1);
+    buffer_[0] = '\0';
+  }
+  void append(const char *format, ...) FORMAT(2, 3);
+  const char *data() const { return buffer_.data(); }
+  char *data() { return buffer_.data(); }
+
+ private:
+  InternalMmapVector<char> buffer_;
+};
+
 static const uptr kModuleUUIDSize = 32;
 static const uptr kMaxSegName = 16;
-
-struct MemoryMappingLayoutData {
-  int current_image;
-  u32 current_magic;
-  u32 current_filetype;
-  ModuleArch current_arch;
-  u8 current_uuid[kModuleUUIDSize];
-  int current_load_cmd_count;
-  const char *current_load_cmd_addr;
-  bool current_instrumented;
-};
 
 class LoadedModule;
 
@@ -611,6 +642,20 @@ class MemoryMappingLayout final : public MemoryMappingLayoutBase {
 };
 
 ///////////////////////////////////////////////////////////////////////////
+
+constexpr uptr kDefaultFileMaxSize = FIRST_32_SECOND_64(1 << 26, 1 << 28);
+
+// Opens the file 'file_name" and reads up to 'max_len' bytes.
+// This function is less I/O efficient than ReadFileToVector as it may reread
+// file multiple times to avoid mmap during read attempts. It's used to read
+// procmap, so short reads with mmap in between can produce inconsistent result.
+// The resulting buffer is mmaped and stored in '*buff'.
+// The size of the mmaped region is stored in '*buff_size'.
+// The total number of read bytes is stored in '*read_len'.
+// Returns true if file was successfully opened and read.
+bool ReadFileToBuffer(const char *file_name, char **buff, uptr *buff_size,
+                      uptr *read_len, uptr max_len = kDefaultFileMaxSize,
+                      error_t *errno_p = nullptr);
 
 // When adding a new architecture, don't forget to also update
 // script/asan_symbolize.py and sanitizer_symbolizer_libcdep.cpp.
