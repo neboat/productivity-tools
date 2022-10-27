@@ -4,22 +4,122 @@
 #include <string>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
 
 #include "debug_util.h"
 #include "symbolizer.h"
 
-#if SANITIZER_MAC
-#include <mach-o/dyld.h>
-#include <mach-o/loader.h>
-#include <mach/mach.h>
-#endif
-
 ///////////////////////////////////////////////////////////////////////////
 /// Copied from compiler_rt/lib/sanitizer*
 
 ///////////////////////////////////////////////////////////////////////////
+
+enum FileAccessMode {
+  RdOnly,
+  WrOnly,
+  RdWr
+};
+
+fd_t ReserveStandardFds(fd_t fd) {
+  CHECK_GE(fd, 0);
+  if (fd > 2)
+    return fd;
+  bool used[3];
+  std::memset(used, 0, sizeof(used));
+  while (fd <= 2) {
+    used[fd] = true;
+    fd = dup(fd);
+  }
+  for (int i = 0; i <= 2; ++i)
+    if (used[i])
+      close(i);
+  return fd;
+}
+
+fd_t OpenFile(const char *filename, FileAccessMode mode, error_t *errno_p) {
+  // if (ShouldMockFailureToOpen(filename))
+  //   return kInvalidFd;
+  int flags;
+  switch (mode) {
+    case RdOnly: flags = O_RDONLY; break;
+    case WrOnly: flags = O_WRONLY | O_CREAT | O_TRUNC; break;
+    case RdWr: flags = O_RDWR | O_CREAT; break;
+  }
+  fd_t res = open(filename, flags, 0660);
+  if (internal_iserror(res, errno_p))
+    return kInvalidFd;
+  return ReserveStandardFds(res);
+}
+
+static void CloseFile(fd_t fd) {
+  close(fd);
+}
+
+static bool ReadFromFile(fd_t fd, void *buff, uptr buff_size, uptr *bytes_read,
+                  error_t *error_p = nullptr) {
+  uptr res = read(fd, buff, buff_size);
+  if (internal_iserror(res, error_p))
+    return false;
+  if (bytes_read)
+    *bytes_read = res;
+  return true;
+}
+
+static bool WriteToFile(fd_t fd, const void *buff, uptr buff_size, uptr *bytes_written,
+                 error_t *error_p = nullptr) {
+  uptr res = write(fd, buff, buff_size);
+  if (internal_iserror(res, error_p))
+    return false;
+  if (bytes_written)
+    *bytes_written = res;
+  return true;
+}
+
+bool ReadFileToBuffer(const char *file_name, char **buff, uptr *buff_size,
+                      uptr *read_len, uptr max_len, error_t *errno_p) {
+  *buff = nullptr;
+  *buff_size = 0;
+  *read_len = 0;
+  if (!max_len)
+    return true;
+  uptr PageSize = GetPageSizeCached();
+  uptr kMinFileLen = Min(PageSize, max_len);
+
+  // The files we usually open are not seekable, so try different buffer sizes.
+  for (uptr size = kMinFileLen;; size = Min(size * 2, max_len)) {
+    UnmapOrDie(*buff, *buff_size);
+    *buff = (char*)MmapOrDie(size, __func__);
+    *buff_size = size;
+    fd_t fd = OpenFile(file_name, RdOnly, errno_p);
+    if (fd == kInvalidFd) {
+      UnmapOrDie(*buff, *buff_size);
+      return false;
+    }
+    *read_len = 0;
+    // Read up to one page at a time.
+    bool reached_eof = false;
+    while (*read_len < size) {
+      uptr just_read;
+      if (!ReadFromFile(fd, *buff + *read_len, size - *read_len, &just_read,
+                        errno_p)) {
+        UnmapOrDie(*buff, *buff_size);
+        CloseFile(fd);
+        return false;
+      }
+      *read_len += just_read;
+      if (just_read == 0 || *read_len == max_len) {
+        reached_eof = true;
+        break;
+      }
+    }
+    CloseFile(fd);
+    if (reached_eof)  // We've read the whole file.
+      break;
+  }
+  return true;
+}
 
 constexpr uptr kLowLevelAllocatorDefaultAlignment = 8;
 static uptr low_level_alloc_min_alignment = kLowLevelAllocatorDefaultAlignment;
@@ -53,323 +153,6 @@ static void NextSectionLoad(LoadedModule *module, MemoryMappedSegmentData *data,
   uptr sec_end = sec_start + sc->size;
   module->addAddressRange(sec_start, sec_end, /*executable=*/false, isWritable,
                           sc->sectname);
-}
-
-void MemoryMappedSegment::AddAddressRanges(LoadedModule *module) {
-  // Don't iterate over sections when the caller hasn't set up the
-  // data pointer, when there are no sections, or when the segment
-  // is executable. Avoid iterating over executable sections because
-  // it will confuse libignore, and because the extra granularity
-  // of information is not needed by any sanitizers.
-  if (!data_ || !data_->nsects || IsExecutable()) {
-    module->addAddressRange(start, end, IsExecutable(), IsWritable(),
-                            data_ ? data_->name : nullptr);
-    return;
-  }
-
-  do {
-    if (data_->lc_type == LC_SEGMENT) {
-      NextSectionLoad<struct section>(module, data_, IsWritable());
-#ifdef MH_MAGIC_64
-    } else if (data_->lc_type == LC_SEGMENT_64) {
-      NextSectionLoad<struct section_64>(module, data_, IsWritable());
-#endif
-    }
-  } while (--data_->nsects);
-}
-
-MemoryMappingLayout::MemoryMappingLayout(bool cache_enabled) {
-  Reset();
-}
-
-MemoryMappingLayout::~MemoryMappingLayout() {
-}
-
-bool MemoryMappingLayout::Error() const {
-  return false;
-}
-
-// More information about Mach-O headers can be found in mach-o/loader.h
-// Each Mach-O image has a header (mach_header or mach_header_64) starting with
-// a magic number, and a list of linker load commands directly following the
-// header.
-// A load command is at least two 32-bit words: the command type and the
-// command size in bytes. We're interested only in segment load commands
-// (LC_SEGMENT and LC_SEGMENT_64), which tell that a part of the file is mapped
-// into the task's address space.
-// The |vmaddr|, |vmsize| and |fileoff| fields of segment_command or
-// segment_command_64 correspond to the memory address, memory size and the
-// file offset of the current memory segment.
-// Because these fields are taken from the images as is, one needs to add
-// _dyld_get_image_vmaddr_slide() to get the actual addresses at runtime.
-
-void MemoryMappingLayout::Reset() {
-  // Count down from the top.
-  // TODO(glider): as per man 3 dyld, iterating over the headers with
-  // _dyld_image_count is thread-unsafe. We need to register callbacks for
-  // adding and removing images which will invalidate the MemoryMappingLayout
-  // state.
-  data_.current_image = _dyld_image_count();
-  data_.current_load_cmd_count = -1;
-  data_.current_load_cmd_addr = 0;
-  data_.current_magic = 0;
-  data_.current_filetype = 0;
-  data_.current_arch = kModuleArchUnknown;
-  std::memset(data_.current_uuid, 0, kModuleUUIDSize);
-}
-
-// static
-void MemoryMappingLayout::CacheMemoryMappings() {
-  // No-op on Mac for now.
-}
-
-void MemoryMappingLayout::LoadFromCache() {
-  // No-op on Mac for now.
-}
-
-// The dyld load address should be unchanged throughout process execution,
-// and it is expensive to compute once many libraries have been loaded,
-// so cache it here and do not reset.
-static mach_header *dyld_hdr = 0;
-static const char kDyldPath[] = "/usr/lib/dyld";
-static const int kDyldImageIdx = -1;
-
-// _dyld_get_image_header() and related APIs don't report dyld itself.
-// We work around this by manually recursing through the memory map
-// until we hit a Mach header matching dyld instead. These recurse
-// calls are expensive, but the first memory map generation occurs
-// early in the process, when dyld is one of the only images loaded,
-// so it will be hit after only a few iterations.
-static mach_header *get_dyld_image_header() {
-  vm_address_t address = 0;
-
-  while (true) {
-    vm_size_t size = 0;
-    unsigned depth = 1;
-    struct vm_region_submap_info_64 info;
-    mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
-    kern_return_t err =
-        vm_region_recurse_64(mach_task_self(), &address, &size, &depth,
-                             (vm_region_info_t)&info, &count);
-    if (err != KERN_SUCCESS) return nullptr;
-
-    if (size >= sizeof(mach_header) && info.protection & kProtectionRead) {
-      mach_header *hdr = (mach_header *)address;
-      if ((hdr->magic == MH_MAGIC || hdr->magic == MH_MAGIC_64) &&
-          hdr->filetype == MH_DYLINKER) {
-        return hdr;
-      }
-    }
-    address += size;
-  }
-}
-
-const mach_header *get_dyld_hdr() {
-  if (!dyld_hdr) dyld_hdr = get_dyld_image_header();
-
-  return dyld_hdr;
-}
-
-// Next and NextSegmentLoad were inspired by base/sysinfo.cc in
-// Google Perftools, https://github.com/gperftools/gperftools.
-
-// NextSegmentLoad scans the current image for the next segment load command
-// and returns the start and end addresses and file offset of the corresponding
-// segment.
-// Note that the segment addresses are not necessarily sorted.
-template <u32 kLCSegment, typename SegmentCommand>
-static bool NextSegmentLoad(MemoryMappedSegment *segment,
-                            MemoryMappedSegmentData *seg_data,
-                            MemoryMappingLayoutData *layout_data) {
-  const char *lc = layout_data->current_load_cmd_addr;
-  layout_data->current_load_cmd_addr += ((const load_command *)lc)->cmdsize;
-  if (((const load_command *)lc)->cmd == kLCSegment) {
-    const SegmentCommand* sc = (const SegmentCommand *)lc;
-    uptr base_virt_addr, addr_mask;
-    if (layout_data->current_image == kDyldImageIdx) {
-      base_virt_addr = (uptr)get_dyld_hdr();
-      // vmaddr is masked with 0xfffff because on macOS versions < 10.12,
-      // it contains an absolute address rather than an offset for dyld.
-      // To make matters even more complicated, this absolute address
-      // isn't actually the absolute segment address, but the offset portion
-      // of the address is accurate when combined with the dyld base address,
-      // and the mask will give just this offset.
-      addr_mask = 0xfffff;
-    } else {
-      base_virt_addr =
-          (uptr)_dyld_get_image_vmaddr_slide(layout_data->current_image);
-      addr_mask = ~0;
-    }
-
-    segment->start = (sc->vmaddr & addr_mask) + base_virt_addr;
-    segment->end = segment->start + sc->vmsize;
-    // Most callers don't need section information, so only fill this struct
-    // when required.
-    if (seg_data) {
-      seg_data->nsects = sc->nsects;
-      seg_data->current_load_cmd_addr =
-          (const char *)lc + sizeof(SegmentCommand);
-      seg_data->lc_type = kLCSegment;
-      seg_data->base_virt_addr = base_virt_addr;
-      seg_data->addr_mask = addr_mask;
-      std::strncpy(seg_data->name, sc->segname,
-                       ARRAY_SIZE(seg_data->name));
-    }
-
-    // Return the initial protection.
-    segment->protection = sc->initprot;
-    segment->offset = (layout_data->current_filetype ==
-                       /*MH_EXECUTE*/ 0x2)
-                          ? sc->vmaddr
-                          : sc->fileoff;
-    if (segment->filename) {
-      const char *src = (layout_data->current_image == kDyldImageIdx)
-                            ? kDyldPath
-                            : _dyld_get_image_name(layout_data->current_image);
-      std::strncpy(segment->filename, src, segment->filename_size);
-    }
-    segment->arch = layout_data->current_arch;
-    std::memcpy(segment->uuid, layout_data->current_uuid, kModuleUUIDSize);
-    return true;
-  }
-  return false;
-}
-
-ModuleArch ModuleArchFromCpuType(cpu_type_t cputype, cpu_subtype_t cpusubtype) {
-  cpusubtype = cpusubtype & ~CPU_SUBTYPE_MASK;
-  switch (cputype) {
-    case CPU_TYPE_I386:
-      return kModuleArchI386;
-    case CPU_TYPE_X86_64:
-      if (cpusubtype == CPU_SUBTYPE_X86_64_ALL) return kModuleArchX86_64;
-      if (cpusubtype == CPU_SUBTYPE_X86_64_H) return kModuleArchX86_64H;
-      CHECK(0 && "Invalid subtype of x86_64");
-      return kModuleArchUnknown;
-    case CPU_TYPE_ARM:
-      if (cpusubtype == CPU_SUBTYPE_ARM_V6) return kModuleArchARMV6;
-      if (cpusubtype == CPU_SUBTYPE_ARM_V7) return kModuleArchARMV7;
-      if (cpusubtype == CPU_SUBTYPE_ARM_V7S) return kModuleArchARMV7S;
-      if (cpusubtype == CPU_SUBTYPE_ARM_V7K) return kModuleArchARMV7K;
-      CHECK(0 && "Invalid subtype of ARM");
-      return kModuleArchUnknown;
-    case CPU_TYPE_ARM64:
-      return kModuleArchARM64;
-    default:
-      CHECK(0 && "Invalid CPU type");
-      return kModuleArchUnknown;
-  }
-}
-
-static const load_command *NextCommand(const load_command *lc) {
-  return (const load_command *)((const char *)lc + lc->cmdsize);
-}
-
-static void FindUUID(const load_command *first_lc, u8 *uuid_output) {
-  for (const load_command *lc = first_lc; lc->cmd != 0; lc = NextCommand(lc)) {
-    if (lc->cmd != LC_UUID) continue;
-
-    const uuid_command *uuid_lc = (const uuid_command *)lc;
-    const uint8_t *uuid = &uuid_lc->uuid[0];
-    std::memcpy(uuid_output, uuid, kModuleUUIDSize);
-    return;
-  }
-}
-
-static bool IsModuleInstrumented(const load_command *first_lc) {
-  for (const load_command *lc = first_lc; lc->cmd != 0; lc = NextCommand(lc)) {
-    if (lc->cmd != LC_LOAD_DYLIB) continue;
-
-    const dylib_command *dylib_lc = (const dylib_command *)lc;
-    uint32_t dylib_name_offset = dylib_lc->dylib.name.offset;
-    const char *dylib_name = ((const char *)dylib_lc) + dylib_name_offset;
-    dylib_name = StripModuleName(dylib_name);
-    if (dylib_name != 0 && (std::strstr(dylib_name, "libclang_rt."))) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool MemoryMappingLayout::Next(MemoryMappedSegment *segment) {
-  for (; data_.current_image >= kDyldImageIdx; data_.current_image--) {
-    const mach_header *hdr = (data_.current_image == kDyldImageIdx)
-                                 ? get_dyld_hdr()
-                                 : _dyld_get_image_header(data_.current_image);
-    if (!hdr) continue;
-    if (data_.current_load_cmd_count < 0) {
-      // Set up for this image;
-      data_.current_load_cmd_count = hdr->ncmds;
-      data_.current_magic = hdr->magic;
-      data_.current_filetype = hdr->filetype;
-      data_.current_arch = ModuleArchFromCpuType(hdr->cputype, hdr->cpusubtype);
-      switch (data_.current_magic) {
-#ifdef MH_MAGIC_64
-        case MH_MAGIC_64: {
-          data_.current_load_cmd_addr =
-              (const char *)hdr + sizeof(mach_header_64);
-          break;
-        }
-#endif
-        case MH_MAGIC: {
-          data_.current_load_cmd_addr = (const char *)hdr + sizeof(mach_header);
-          break;
-        }
-        default: {
-          continue;
-        }
-      }
-      FindUUID((const load_command *)data_.current_load_cmd_addr,
-               data_.current_uuid);
-      data_.current_instrumented = IsModuleInstrumented(
-          (const load_command *)data_.current_load_cmd_addr);
-    }
-
-    for (; data_.current_load_cmd_count >= 0; data_.current_load_cmd_count--) {
-      switch (data_.current_magic) {
-        // data_.current_magic may be only one of MH_MAGIC, MH_MAGIC_64.
-#ifdef MH_MAGIC_64
-        case MH_MAGIC_64: {
-          if (NextSegmentLoad<LC_SEGMENT_64, struct segment_command_64>(
-                  segment, segment->data_, &data_))
-            return true;
-          break;
-        }
-#endif
-        case MH_MAGIC: {
-          if (NextSegmentLoad<LC_SEGMENT, struct segment_command>(
-                  segment, segment->data_, &data_))
-            return true;
-          break;
-        }
-      }
-    }
-    // If we get here, no more load_cmd's in this image talk about
-    // segments.  Go on to the next image.
-  }
-  return false;
-}
-
-void MemoryMappingLayout::DumpListOfModules(
-    InternalMmapVectorNoCtor<LoadedModule> *modules) {
-  Reset();
-  InternalMmapVector<char> module_name(kMaxPathLength);
-  MemoryMappedSegment segment(module_name.data(), module_name.size());
-  MemoryMappedSegmentData data;
-  segment.data_ = &data;
-  while (Next(&segment)) {
-    if (segment.filename[0] == '\0') continue;
-    LoadedModule *cur_module = nullptr;
-    if (!modules->empty() &&
-        0 == std::strcmp(segment.filename, modules->back().full_name())) {
-      cur_module = &modules->back();
-    } else {
-      modules->push_back(LoadedModule());
-      cur_module = &modules->back();
-      cur_module->set(segment.filename, segment.start, segment.arch,
-                      segment.uuid, data_.current_instrumented);
-    }
-    segment.AddAddressRanges(cur_module);
-  }
 }
 
 void LoadedModule::set(const char *module_name, uptr base_address) {
@@ -428,14 +211,6 @@ bool LoadedModule::containsAddress(uptr address) const {
   }
   return false;
 }
-
-void ListOfModules::init() {
-  clearOrInit();
-  MemoryMappingLayout memory_mapping(false);
-  memory_mapping.DumpListOfModules(&modules_);
-}
-
-void ListOfModules::fallbackInit() { clear(); }
 
 AddressInfo::AddressInfo() {
   std::memset(this, 0, sizeof(AddressInfo));
@@ -512,25 +287,6 @@ const char *GetProcessName() {
   return process_name_cache_str;
 }
 
-uptr ReadBinaryName(/*out*/char *buf, uptr buf_len) {
-  CHECK_LE(kMaxPathLength, buf_len);
-
-  // On OS X the executable path is saved to the stack by dyld. Reading it
-  // from there is much faster than calling dladdr, especially for large
-  // binaries with symbols.
-  InternalMmapVector<char> exe_path(kMaxPathLength);
-  uint32_t size = exe_path.size();
-  if (_NSGetExecutablePath(exe_path.data(), &size) == 0 &&
-      realpath(exe_path.data(), buf) != 0) {
-    return std::strlen(buf);
-  }
-  return 0;
-}
-
-uptr ReadLongProcessName(/*out*/char *buf, uptr buf_len) {
-  return ReadBinaryName(buf, buf_len);
-}
-
 static uptr ReadProcessName(/*out*/ char *buf, uptr buf_len) {
   ReadLongProcessName(buf, buf_len);
   char *s = const_cast<char *>(StripModuleName(buf));
@@ -577,131 +333,6 @@ static bool FileExists(const char *filename) {
     return false;
   // Sanity check: filename is a regular file.
   return S_ISREG(st.st_mode);
-}
-
-static void CloseFile(fd_t fd) {
-  close(fd);
-}
-
-static bool ReadFromFile(fd_t fd, void *buff, uptr buff_size, uptr *bytes_read,
-                  error_t *error_p = nullptr) {
-  uptr res = read(fd, buff, buff_size);
-  if (internal_iserror(res, error_p))
-    return false;
-  if (bytes_read)
-    *bytes_read = res;
-  return true;
-}
-
-static bool WriteToFile(fd_t fd, const void *buff, uptr buff_size, uptr *bytes_written,
-                 error_t *error_p = nullptr) {
-  uptr res = write(fd, buff, buff_size);
-  if (internal_iserror(res, error_p))
-    return false;
-  if (bytes_written)
-    *bytes_written = res;
-  return true;
-}
-
-static fd_t internal_spawn_impl(const char *argv[], const char *envp[],
-                                pid_t *pid) {
-  fd_t primary_fd = kInvalidFd;
-  fd_t secondary_fd = kInvalidFd;
-
-  auto fd_closer = at_scope_exit([&] {
-    close(primary_fd);
-    close(secondary_fd);
-  });
-
-  // We need a new pseudoterminal to avoid buffering problems. The 'atos' tool
-  // in particular detects when it's talking to a pipe and forgets to flush the
-  // output stream after sending a response.
-  primary_fd = posix_openpt(O_RDWR);
-  if (primary_fd == kInvalidFd)
-    return kInvalidFd;
-
-  int res = grantpt(primary_fd) || unlockpt(primary_fd);
-  if (res != 0) return kInvalidFd;
-
-  // Use TIOCPTYGNAME instead of ptsname() to avoid threading problems.
-  char secondary_pty_name[128];
-  res = ioctl(primary_fd, TIOCPTYGNAME, secondary_pty_name);
-  if (res == -1) return kInvalidFd;
-
-  secondary_fd = open(secondary_pty_name, O_RDWR);
-  if (secondary_fd == kInvalidFd)
-    return kInvalidFd;
-
-  // File descriptor actions
-  posix_spawn_file_actions_t acts;
-  res = posix_spawn_file_actions_init(&acts);
-  if (res != 0) return kInvalidFd;
-
-  auto acts_cleanup = at_scope_exit([&] {
-    posix_spawn_file_actions_destroy(&acts);
-  });
-
-  res = posix_spawn_file_actions_adddup2(&acts, secondary_fd, STDIN_FILENO) ||
-        posix_spawn_file_actions_adddup2(&acts, secondary_fd, STDOUT_FILENO) ||
-        posix_spawn_file_actions_addclose(&acts, secondary_fd);
-  if (res != 0) return kInvalidFd;
-
-  // Spawn attributes
-  posix_spawnattr_t attrs;
-  res = posix_spawnattr_init(&attrs);
-  if (res != 0) return kInvalidFd;
-
-  auto attrs_cleanup  = at_scope_exit([&] {
-    posix_spawnattr_destroy(&attrs);
-  });
-
-  // In the spawned process, close all file descriptors that are not explicitly
-  // described by the file actions object. This is Darwin-specific extension.
-  res = posix_spawnattr_setflags(&attrs, POSIX_SPAWN_CLOEXEC_DEFAULT);
-  if (res != 0) return kInvalidFd;
-
-  // posix_spawn
-  char **argv_casted = const_cast<char **>(argv);
-  char **envp_casted = const_cast<char **>(envp);
-  res = posix_spawn(pid, argv[0], &acts, &attrs, argv_casted, envp_casted);
-  if (res != 0) return kInvalidFd;
-
-  // Disable echo in the new terminal, disable CR.
-  struct termios termflags;
-  tcgetattr(primary_fd, &termflags);
-  termflags.c_oflag &= ~ONLCR;
-  termflags.c_lflag &= ~ECHO;
-  tcsetattr(primary_fd, TCSANOW, &termflags);
-
-  // On success, do not close primary_fd on scope exit.
-  fd_t fd = primary_fd;
-  primary_fd = kInvalidFd;
-
-  return fd;
-}
-
-fd_t internal_spawn(const char *argv[], const char *envp[], pid_t *pid) {
-  // The client program may close its stdin and/or stdout and/or stderr thus
-  // allowing open/posix_openpt to reuse file descriptors 0, 1 or 2. In this
-  // case the communication is broken if either the parent or the child tries to
-  // close or duplicate these descriptors. We temporarily reserve these
-  // descriptors here to prevent this.
-  fd_t low_fds[3];
-  size_t count = 0;
-
-  for (; count < 3; count++) {
-    low_fds[count] = posix_openpt(O_RDWR);
-    if (low_fds[count] >= STDERR_FILENO)
-      break;
-  }
-
-  fd_t fd = internal_spawn_impl(argv, envp, pid);
-
-  for (; count > 0; count--) {
-    close(low_fds[count]);
-  }
-
-  return fd;
 }
 
 void SleepForMillis(unsigned millis) { usleep((u64)millis * 1000); }

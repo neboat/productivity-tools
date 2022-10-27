@@ -8,7 +8,8 @@ set(CILKSAN_SOURCES
   libhooks.cpp
   locking.cpp
   print_addr.cpp
-  symbolizer.cpp)
+  symbolizer.cpp
+  symbolizer_platform.cpp)
 
 set(CILKSAN_BITCODE_SOURCE
   driver.cpp

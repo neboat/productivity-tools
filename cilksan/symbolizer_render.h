@@ -6,25 +6,6 @@
 
 #include "symbolizer.h"
 
-#define FORMAT(f, a)  __attribute__((format(printf, f, a)))
-
-class InternalScopedString {
- public:
-  InternalScopedString() : buffer_(1) { buffer_[0] = '\0'; }
-
-  uptr length() const { return buffer_.size() - 1; }
-  void clear() {
-    buffer_.resize(1);
-    buffer_[0] = '\0';
-  }
-  void append(const char *format, ...) FORMAT(2, 3);
-  const char *data() const { return buffer_.data(); }
-  char *data() { return buffer_.data(); }
-
- private:
-  InternalMmapVector<char> buffer_;
-};
-
 void InternalScopedString::append(const char *format, ...) {
   uptr prev_len = length();
 
