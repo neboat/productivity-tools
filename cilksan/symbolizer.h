@@ -92,12 +92,6 @@ using Mutex = std::mutex;
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
 
-#if SANITIZER_MAC
-#include "symbolizer_mac.h"
-#elif SANITIZER_LINUX
-#include "symbolizer_linux.h"
-#endif
-
 // I/O
 // Define these as macros so we can use them in linker initialized global
 // structs without dynamic initialization.
@@ -619,6 +613,16 @@ class MemoryMappingLayoutBase {
  protected:
   ~MemoryMappingLayoutBase() {}
 };
+
+// Get the definition of MemoryMappingLayoutData from the
+// platform-specific header.
+#if SANITIZER_MAC
+#include "symbolizer_mac.h"
+#elif SANITIZER_LINUX
+#include "symbolizer_linux.h"
+#endif
+
+struct MemoryMappingLayoutData;
 
 class MemoryMappingLayout final : public MemoryMappingLayoutBase {
  public:

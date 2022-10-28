@@ -14,4 +14,4 @@ struct MemoryMappingLayoutData {
   bool current_instrumented;
 };
 
-#endif _SYMBOLIZER_MAC
+#endif // _SYMBOLIZER_MAC
