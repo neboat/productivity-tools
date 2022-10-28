@@ -2,10 +2,8 @@
 #include <fcntl.h>
 #include <spawn.h>
 #include <string>
-#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <termios.h>
 #include <unistd.h>
 
 #include "debug_util.h"
@@ -141,18 +139,6 @@ void *LowLevelAllocator::Allocate(uptr size) {
   void *res = allocated_current_;
   allocated_current_ += size;
   return res;
-}
-
-template <typename Section>
-static void NextSectionLoad(LoadedModule *module, MemoryMappedSegmentData *data,
-                            bool isWritable) {
-  const Section *sc = (const Section *)data->current_load_cmd_addr;
-  data->current_load_cmd_addr += sizeof(Section);
-
-  uptr sec_start = (sc->addr & data->addr_mask) + data->base_virt_addr;
-  uptr sec_end = sec_start + sc->size;
-  module->addAddressRange(sec_start, sec_end, /*executable=*/false, isWritable,
-                          sc->sectname);
 }
 
 void LoadedModule::set(const char *module_name, uptr base_address) {

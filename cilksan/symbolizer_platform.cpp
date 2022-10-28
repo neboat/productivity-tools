@@ -1,5 +1,11 @@
 #include "symbolizer.h"
 
+#include <fcntl.h>
+#include <spawn.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
+
 #if SANITIZER_MAC
 #include "symbolizer_mac.h"
 
@@ -13,11 +19,10 @@
 
 #include <link.h>
 #include <linux/sysctl.h>
-#include <unistd.h>
 #endif
 
 #if SANITIZER_MAC
-inline char **GetEnviron() {
+char **GetEnviron() {
   char ***env_ptr = _NSGetEnviron();
   if (!env_ptr) {
     // Report("_NSGetEnviron() returned NULL. Please make sure __asan_init() is "
@@ -168,6 +173,18 @@ char **GetEnviron() {
 ///////////////////////////////////////////////////////////////////////////
 
 #if SANITIZER_MAC
+template <typename Section>
+static void NextSectionLoad(LoadedModule *module, MemoryMappedSegmentData *data,
+                            bool isWritable) {
+  const Section *sc = (const Section *)data->current_load_cmd_addr;
+  data->current_load_cmd_addr += sizeof(Section);
+
+  uptr sec_start = (sc->addr & data->addr_mask) + data->base_virt_addr;
+  uptr sec_end = sec_start + sc->size;
+  module->addAddressRange(sec_start, sec_end, /*executable=*/false, isWritable,
+                          sc->sectname);
+}
+
 void MemoryMappedSegment::AddAddressRanges(LoadedModule *module) {
   // Don't iterate over sections when the caller hasn't set up the
   // data pointer, when there are no sections, or when the segment
