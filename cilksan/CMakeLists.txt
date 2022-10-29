@@ -15,6 +15,9 @@ set(CILKSAN_BITCODE_SOURCE
   driver.cpp
   libhooks.cpp)
 
+set(CILKSAN_INTERPOSE_SOURCES
+  interpose.cpp)
+
 set(CILKSAN_RR_FILES
   rr_commands.py)
 
@@ -85,6 +88,14 @@ if (APPLE)
     DEFS ${CILKSAN_COMMON_DEFINITIONS}
     DEPS ${CILKSAN_OBJ_DEPS})
 
+  add_cilktools_object_libraries(RTCilksan_interpose
+    OS ${CILKTOOL_SUPPORTED_OS}
+    ARCHS ${CILKSAN_SUPPORTED_ARCH}
+    SOURCES ${CILKSAN_INTERPOSE_SOURCES}
+    CFLAGS ${CILKSAN_DYNAMIC_CFLAGS}
+    DEFS ${CILKSAN_DYNAMIC_DEFINITIONS}
+    DEPS ${CILKSAN_OBJ_DEPS})
+
   add_cilktools_runtime(clang_rt.cilksan
     STATIC
     OS ${CILKTOOL_SUPPORTED_OS}
@@ -99,7 +110,7 @@ if (APPLE)
     SHARED
     OS ${CILKTOOL_SUPPORTED_OS}
     ARCHS ${CILKSAN_SUPPORTED_ARCH}
-    OBJECT_LIBS RTCilksan_dynamic
+    OBJECT_LIBS RTCilksan_dynamic RTCilksan_interpose
     CFLAGS ${CILKSAN_DYNAMIC_CFLAGS}
     LINK_FLAGS ${CILKSAN_DYNAMIC_LINK_FLAGS}
     LINK_LIBS ${CILKSAN_DYNAMIC_LIBS}

@@ -1147,6 +1147,29 @@ CILKSAN_API void __cilksan_record_free(void *ptr) {
 
 static std::map<uintptr_t, size_t> pages_to_clear;
 
+#ifdef __APPLE__
+struct interpose_substitution {
+  const uintptr_t replacement;
+  const uintptr_t original;
+};
+
+// For a function foo() create a global pair of pointers { wrap_foo, foo } in
+// the __DATA,__interpose section.
+// As a result all the calls to foo() will be routed to wrap_foo() at runtime.
+#define INTERPOSER(func_name) __attribute__((used)) \
+const interpose_substitution substitution_##func_name[] \
+    __attribute__((section("__DATA, __interpose"))) = { \
+    { reinterpret_cast<const uintptr_t>(WRAP(func_name)), \
+      reinterpret_cast<const uintptr_t>(func_name) } \
+}
+
+# define WRAP(x) wrap_##x
+# define WRAPPER_NAME(x) "wrap_"#x
+# define INTERCEPTOR_ATTRIBUTE
+# define DECLARE_WRAPPER(ret_type, func, ...)
+
+#endif // __APPLE__
+
 // Flag to manage initialization of memory functions.  We need this flag because
 // dlsym uses some of the memory functions we are trying to interpose, which
 // means that calling dlsym directly will lead to infinite recursion and a
