@@ -209,23 +209,23 @@ sum_t accum_wrong (num_t const * vals, num_t const n) {
 // CHECK-LABEL: wrong
 
 // CHECK: Race detected on location [[SUM:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} accum_wrong
-// CHECK-O0: Spawn {{[0-9a-f]+}} accum_wrong
-// CHECK: * Read {{[0-9a-f]+}}
-// CHECK-O0: Spawn {{[0-9a-f]+}} accum_wrong
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in accum_wrong
+// CHECK-O0: Spawn 0x{{[0-9a-f]+}} in accum_wrong
+// CHECK: * Read 0x{{[0-9a-f]+}} in
+// CHECK-O0: Spawn 0x{{[0-9a-f]+}} in accum_wrong
 // CHECK: Common calling context
-// CHECK-O0-NEXT: Call {{[0-9a-f]+}}
-// CHECK-OPT-NEXT: Parfor {{[0-9a-f]+}} accum_wrong
+// CHECK-O0-NEXT: Call 0x{{[0-9a-f]+}} in
+// CHECK-OPT-NEXT: Parfor 0x{{[0-9a-f]+}} in accum_wrong
 // CHECK: Stack object
 
 // CHECK: Race detected on location [[SUM]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} accum_wrong
-// CHECK-O0: Spawn {{[0-9a-f]+}} accum_wrong
-// CHECK: * Write {{[0-9a-f]+}} accum_wrong
-// CHECK-O0: Spawn {{[0-9a-f]+}} accum_wrong
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in accum_wrong
+// CHECK-O0: Spawn 0x{{[0-9a-f]+}} in accum_wrong
+// CHECK: * Write 0x{{[0-9a-f]+}} in accum_wrong
+// CHECK-O0: Spawn 0x{{[0-9a-f]+}} in accum_wrong
 // CHECK: Common calling context
-// CHECK-O0-NEXT: Call {{[0-9a-f]+}}
-// CHECK-OPT-NEXT: Parfor {{[0-9a-f]+}} accum_wrong
+// CHECK-O0-NEXT: Call 0x{{[0-9a-f]+}} in
+// CHECK-OPT-NEXT: Parfor 0x{{[0-9a-f]+}} in accum_wrong
 // CHECK: Stack object
 
 /* ******************************

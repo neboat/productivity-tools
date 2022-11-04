@@ -27,20 +27,24 @@ int main() {
 }
 
 // CHECK: Race detected on location [[RSUM:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: to variable rsum
-// CHECK-NEXT: * Read {{[0-9a-f]+}} main
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: to variable rsum
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Parfor
+// CHECK-NEXT: Parfor 0x{{[0-9a-f]+}}
+// CHECK: Allocation
+// CHECK: Alloc 0x{{[0-9a-f]+}}
 
 // CHECK: Race detected on location [[RSUM]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: to variable rsum
-// CHECK-NEXT: * Write {{[0-9a-f]+}} main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: to variable rsum
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Parfor
+// CHECK-NEXT: Parfor 0x{{[0-9a-f]+}}
+// CHECK: Allocation
+// CHECK: Alloc 0x{{[0-9a-f]+}}
 
 // Verify that no other races are detected
 // CHECK-NOT: Race detected on location

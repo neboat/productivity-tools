@@ -40,50 +40,56 @@ int main(int argc, char *argv[]) {
 // CHECK: sum 0x[[SUM:[0-9a-f]+]]
 
 // CHECK: Race detected on location [[SUM]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} foo
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in foo
 // CHECK-NEXT: to variable sum
-// CHECK-NEXT: * Read {{[0-9a-f]+}} foo
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in foo
 // CHECK-NEXT: to variable sum
 // CHECK: Common calling context
-// CHECK-NEXT: Parfor {{[0-9a-f]+}} foo
+// CHECK-NEXT: Parfor 0x{{[0-9a-f]+}} in foo
 // CHECK: Stack object sum
 
 // CHECK: Race detected on location [[SUM]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} foo
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in foo
 // CHECK-NEXT: to variable sum
-// CHECK-NEXT: * Write {{[0-9a-f]+}} foo
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in foo
 // CHECK-NEXT: to variable sum
 // CHECK: Common calling context
-// CHECK-NEXT: Parfor {{[0-9a-f]+}} foo
+// CHECK-NEXT: Parfor 0x{{[0-9a-f]+}} in foo
 // CHECK: Stack object sum
 
 // CHECK: Race detected on location [[GLOBAL]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} bar
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in bar
+// CHECK-NEXT: inlined in
 // CHECK-NEXT: to variable globl
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} foo
-// CHECK-NEXT: * Read {{[0-9a-f]+}} bar
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in foo
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in bar
+// CHECK-NEXT: inlined in
 // CHECK-NEXT: to variable globl
-// CHECK-NEXT-OG: Call {{[0-9a-f]+}} foo
+// CHECK-NEXT-OG: Call 0x{{[0-9a-f]+}} in foo
 // CHECK: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Race detected on location [[GLOBAL]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} bar
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in bar
+// CHECK-NEXT: inlined in
 // CHECK-NEXT: to variable globl
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} foo
-// CHECK-NEXT: * Write {{[0-9a-f]+}} bar
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in foo
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in bar
+// CHECK-NEXT: inlined in
 // CHECK-NEXT: to variable globl
 // CHECK: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Race detected on location [[GLOBAL]]
-// CHECK-NEXT: * Read {{[0-9a-f]+}} bar
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in bar
+// CHECK-NEXT: inlined in
 // CHECK-NEXT: to variable globl
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} foo
-// CHECK-NEXT: * Write {{[0-9a-f]+}} bar
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in foo
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in bar
+// CHECK-NEXT: inlined in
 // CHECK-NEXT: to variable globl
 // CHECK: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Cilksan detected 5 distinct races.
 // CHECK-NEXT: Cilksan suppressed {{[0-9]+}} duplicate race reports.

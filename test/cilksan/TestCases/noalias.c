@@ -38,20 +38,20 @@ int main(int argc, char *argv[]) {
   inc_loop(x, x+1);
 
 // CHECK: Race detected on location [[X1:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} inc_loop
-// CHECK: * Read {{[0-9a-f]+}} inc_loop
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in inc_loop
+// CHECK: * Read 0x{{[0-9a-f]+}} in inc_loop
 // CHECK: Common calling context
 // CHECK-NEXT: Parfor
 
 // CHECK: Race detected on location [[X1]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} inc_loop
-// CHECK: * Write {{[0-9a-f]+}} inc_loop
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in inc_loop
+// CHECK: * Write 0x{{[0-9a-f]+}} in inc_loop
 // CHECK: Common calling context
 // CHECK-NEXT: Parfor
 
 // CHECK: Race detected on location [[X1]]
-// CHECK-NEXT: * Read {{[0-9a-f]+}} inc_loop
-// CHECK: * Write {{[0-9a-f]+}} inc_loop
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in inc_loop
+// CHECK: * Write 0x{{[0-9a-f]+}} in inc_loop
 // CHECK: Common calling context
 // CHECK-NEXT: Parfor
 
@@ -64,29 +64,29 @@ int main(int argc, char *argv[]) {
   cilk_sync;
 
 // CHECK: Race detected on location [[X1]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} inc
-// CHECK: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} main
-// CHECK-NEXT: * Read {{[0-9a-f]+}} inc
-// CHECK: Spawn {{[0-9a-f]+}} inc
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in inc
+// CHECK: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in inc
+// CHECK: Spawn 0x{{[0-9a-f]+}} in inc
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Race detected on location [[X1]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} inc
-// CHECK: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} main
-// CHECK-NEXT: * Write {{[0-9a-f]+}} inc
-// CHECK: Spawn {{[0-9a-f]+}} inc
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in inc
+// CHECK: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in inc
+// CHECK: Spawn 0x{{[0-9a-f]+}} in inc
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
   
 // CHECK: Race detected on location [[X1]]
-// CHECK-NEXT: * Read {{[0-9a-f]+}} inc
-// CHECK: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} main
-// CHECK-NEXT: * Write {{[0-9a-f]+}} inc
-// CHECK: Spawn {{[0-9a-f]+}} inc
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in inc
+// CHECK: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in inc
+// CHECK: Spawn 0x{{[0-9a-f]+}} in inc
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
   // Duplicate race
   cilk_spawn inc(x+3);

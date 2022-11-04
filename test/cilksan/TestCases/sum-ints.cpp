@@ -255,19 +255,21 @@ sum_t accum_wrong (num_t n) {
 // CHECK-LABEL: racy cilk_for
 
 // CHECK: Race detected on location [[SUM:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} accum_wrong
-// CHECK: * Read {{[0-9a-f]+}}
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in accum_wrong
+// CHECK: * Read 0x{{[0-9a-f]+}} in
 // CHECK: Common calling context
-// CHECK-NEXT: Parfor {{[0-9a-f]+}} accum_wrong
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Parfor 0x{{[0-9a-f]+}} in accum_wrong
+// CHECK-NEXT: inlined in long long time_accum_func<
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK: Stack object
 
 // CHECK: Race detected on location [[SUM]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} accum_wrong
-// CHECK: * Write {{[0-9a-f]+}} accum_wrong
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in accum_wrong
+// CHECK: * Write 0x{{[0-9a-f]+}} in accum_wrong
 // CHECK: Common calling context
-// CHECK-NEXT: Parfor {{[0-9a-f]+}} accum_wrong
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Parfor 0x{{[0-9a-f]+}} in accum_wrong
+// CHECK-NEXT: inlined in long long time_accum_func<
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK: Stack object
 
 

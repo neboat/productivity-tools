@@ -63,21 +63,23 @@ int main(int argc, char *argv[])
 }
 
 // CHECK: Race detected on location [[DATA:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} fill
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in fill
+// CHECK-NEXT: inlined in work
 // CHECK-NEXT: to variable data
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} loop
-// CHECK-NEXT: * Free {{[0-9a-f]+}} loop
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in loop
+// CHECK-NEXT: * Free 0x{{[0-9a-f]+}} in loop
 // CHECK: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK: Stack object
 
 // CHECK: Race detected on location [[DATA]]
-// CHECK-NEXT: * Read {{[0-9a-f]+}} check
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in check
+// CHECK-NEXT: inlined in work
 // CHECK-NEXT: to variable data
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} loop
-// CHECK-NEXT: * Free {{[0-9a-f]+}} loop
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in loop
+// CHECK-NEXT: * Free 0x{{[0-9a-f]+}} in loop
 // CHECK: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK: Stack object
 
 // CHECK: Cilksan detected 2 distinct races.

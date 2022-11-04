@@ -96,137 +96,137 @@ int main(int argc, char** argv) {
 }
 
 // CHECK: Race detected on location [[GLOBAL:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} global_printf_test
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in global_printf_test
 // CHECK-NEXT: to variable global
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} global_printf_test
-// CHECK-NEXT: * Read {{[0-9a-f]+}} global_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in global_printf_test
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in global_printf_test
 // CHECK-NEXT: to variable global
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Race detected on location [[GLOBAL]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} global_cout_test
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in global_cout_test
 // CHECK-NEXT: to variable global
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} global_cout_test
-// CHECK-NEXT: * Read {{[0-9a-f]+}} global_cout_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in global_cout_test
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in global_cout_test
 // CHECK-NEXT: to variable global
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Race detected on location [[X:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} arr_helper
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in arr_helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} malloc_free_test
-// CHECK-NEXT: * Free {{[0-9a-f]+}} malloc_free_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in malloc_free_test
+// CHECK-NEXT: * Free 0x{{[0-9a-f]+}} in malloc_free_test
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK: Heap object x
 
 // CHECK: Race detected on location [[X]]
-// CHECK-NEXT: * Read {{[0-9a-f]+}} arr_helper
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in arr_helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} malloc_free_test
-// CHECK-NEXT: * Free {{[0-9a-f]+}} malloc_free_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in malloc_free_test
+// CHECK-NEXT: * Free 0x{{[0-9a-f]+}} in malloc_free_test
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK: Heap object x
 
 // CHECK: Race detected on location [[X:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} arr_helper
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in arr_helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} malloc_printf_test
-// CHECK-NEXT: * Read {{[0-9a-f]+}} malloc_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in malloc_printf_test
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in malloc_printf_test
 // CHECK-NEXT: to variable
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK: Heap object x
 
 // CHECK: Race detected on location
 // CHECK: [[X:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} arr_helper
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in arr_helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} malloc_cout_test
-// CHECK-NEXT: * Read {{[0-9a-f]+}} malloc_cout_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in malloc_cout_test
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in malloc_cout_test
 // CHECK-NEXT: to variable
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK: Heap object x
 
 // CHECK: Race detected on location
 // CHECK: [[CPY:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: to variable cpy
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: * Read {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK: Heap object cpy
 
 // CHECK: Race detected on location [[CPY]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: to variable cpy
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: * Read {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK: Heap object cpy
 
 // CHECK: Race detected on location [[STR2PTR:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: to variable str2
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: * Read {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: to variable str2
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Race detected on location [[STR2:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: * Read {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Race detected on location [[CPY]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: to variable cpy
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: * Read {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK: Heap object cpy
 
 // CHECK: Race detected on location [[STR3PTR:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: to variable str3
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: * Read {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: to variable str3
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Race detected on location [[STR3:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: * Read {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Race detected on location [[STR2]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: * Free {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: * Free 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Race detected on location [[STR3]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: Spawn {{[0-9a-f]+}} str_printf_test
-// CHECK-NEXT: * Free {{[0-9a-f]+}} str_printf_test
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: Spawn 0x{{[0-9a-f]+}} in str_printf_test
+// CHECK-NEXT: * Free 0x{{[0-9a-f]+}} in str_printf_test
 // CHECK-NEXT: Common calling context
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 
 // CHECK: Cilksan detected 15 distinct races.
 // CHECK-NEXT: Cilksan suppressed 0 duplicate race reports.

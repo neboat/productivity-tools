@@ -26,22 +26,22 @@ int main(int argc, char** argv) {
   std::cout << (void*)&global << " " << global << '\n';
 
 // CHECK: Race detected on location [[GLOBAL:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} helper
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: * Read {{[0-9a-f]+}} helper
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: Common calling context
 // CHECK-NEXT: Parfor
 
 // CHECK: Race detected on location [[GLOBAL]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} helper
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: * Write {{[0-9a-f]+}} helper
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: Common calling context
 // CHECK-NEXT: Parfor
 
@@ -53,23 +53,23 @@ int main(int argc, char** argv) {
   std::cout << (void*)&local << " " << local << '\n';
 
 // CHECK: Race detected on location [[LOCAL:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} helper
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: * Read {{[0-9a-f]+}} helper
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: Common calling context
 // CHECK-NEXT: Parfor
 // CHECK: Stack object local
 
 // CHECK: Race detected on location [[LOCAL]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} helper
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: * Write {{[0-9a-f]+}} helper
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in helper
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: Common calling context
 // CHECK-NEXT: Parfor
 // CHECK: Stack object local
@@ -82,23 +82,23 @@ int main(int argc, char** argv) {
   std::cout << (void*)x << " " << x[0] << '\n';
 
 // CHECK: Race detected on location [[MALLOC:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} increment
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: * Read {{[0-9a-f]+}} increment
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: Common calling context
 // CHECK-NEXT: Parfor
 // CHECK: Heap object x
 
 // CHECK: Race detected on location [[MALLOC]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} increment
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: * Write {{[0-9a-f]+}} increment
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: Common calling context
 // CHECK-NEXT: Parfor
 // CHECK: Heap object x
@@ -111,23 +111,23 @@ int main(int argc, char** argv) {
   std::cout << (void*)y << " " << y[0] << '\n';
 
 // CHECK: Race detected on location [[CALLOC:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} increment
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: * Read {{[0-9a-f]+}} increment
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: Common calling context
 // CHECK-NEXT: Parfor
 // CHECK: Heap object y
 
 // CHECK: Race detected on location [[CALLOC]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} increment
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: * Write {{[0-9a-f]+}} increment
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: Common calling context
 // CHECK-NEXT: Parfor
 // CHECK: Heap object y
@@ -140,23 +140,23 @@ int main(int argc, char** argv) {
   std::cout << (void*)z << " " << z[0] << '\n';
 
 // CHECK: Race detected on location [[REALLOC:[0-9a-f]+]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} increment
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: * Read {{[0-9a-f]+}} increment
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: Common calling context
 // CHECK-NEXT: Parfor
 // CHECK: Heap object z
 
 // CHECK: Race detected on location [[REALLOC]]
-// CHECK-NEXT: * Write {{[0-9a-f]+}} increment
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
-// CHECK-NEXT: * Write {{[0-9a-f]+}} increment
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in increment
 // CHECK-NEXT: to variable x
-// CHECK-NEXT: Call {{[0-9a-f]+}} main
+// CHECK-NEXT: Call 0x{{[0-9a-f]+}} in main
 // CHECK-NEXT: Common calling context
 // CHECK-NEXT: Parfor
 // CHECK: Heap object z

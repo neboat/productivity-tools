@@ -189,51 +189,51 @@ int main() {
 }
 
 // CHECK: Race detected
-// CHECK-NEXT: * Read {{[0-9a-f]+}} test_mm_i32gather_epi32
-// CHECK-NEXT: + Spawn {{[0-9a-f]+}} test_mm_i32gather_epi32
-// CHECK-NEXT: * Write {{[0-9a-f]+}} test_mm_i32gather_epi32
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in test_mm_i32gather_epi32
+// CHECK-NEXT: + Spawn 0x{{[0-9a-f]+}} in test_mm_i32gather_epi32
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in test_mm_i32gather_epi32
 // CHECK: test_mm_i32gather_epi32: 4
 
 // CHECK: Race detected
-// CHECK-NEXT: * Read {{[0-9a-f]+}} test_mm256_i32gather_epi32
-// CHECK-NEXT: + Spawn {{[0-9a-f]+}} test_mm256_i32gather_epi32
-// CHECK-NEXT: * Write {{[0-9a-f]+}} test_mm256_i32gather_epi32
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in test_mm256_i32gather_epi32
+// CHECK-NEXT: + Spawn 0x{{[0-9a-f]+}} in test_mm256_i32gather_epi32
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in test_mm256_i32gather_epi32
 // CHECK: test_mm256_i32gather_epi32: 111104
 
 // CHECK: Race detected
-// CHECK-NEXT: * Read {{[0-9a-f]+}} test_mm_mask_i32gather_epi32
-// CHECK-NEXT: + Spawn {{[0-9a-f]+}} test_mm_mask_i32gather_epi32
-// CHECK-NEXT: * Write {{[0-9a-f]+}} test_mm_mask_i32gather_epi32
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in test_mm_mask_i32gather_epi32
+// CHECK-NEXT: + Spawn 0x{{[0-9a-f]+}} in test_mm_mask_i32gather_epi32
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in test_mm_mask_i32gather_epi32
 // CHECK: test_mm_mask_i32gather_epi32: 1001
 
 // CHECK: Race detected
-// CHECK-NEXT: * Read {{[0-9a-f]+}} test_mm256_mask_i32gather_epi32
-// CHECK-NEXT: + Spawn {{[0-9a-f]+}} test_mm256_mask_i32gather_epi32
-// CHECK-NEXT: * Write {{[0-9a-f]+}} test_mm256_mask_i32gather_epi32
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in test_mm256_mask_i32gather_epi32
+// CHECK-NEXT: + Spawn 0x{{[0-9a-f]+}} in test_mm256_mask_i32gather_epi32
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in test_mm256_mask_i32gather_epi32
 // CHECK: test_mm256_mask_i32gather_epi32: 100003
 
 // CHECK: Race detected
-// CHECK-NEXT: * Read {{[0-9a-f]+}} test_mm_i32gather_pd
-// CHECK-NEXT: + Spawn {{[0-9a-f]+}} test_mm_i32gather_pd
-// CHECK-NEXT: * Write {{[0-9a-f]+}} test_mm_i32gather_pd
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in test_mm_i32gather_pd
+// CHECK-NEXT: + Spawn 0x{{[0-9a-f]+}} in test_mm_i32gather_pd
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in test_mm_i32gather_pd
 // CHECK: test_mm_i32gather_pd: 2.0
 
 // CHECK: Race detected
-// CHECK-NEXT: * Read {{[0-9a-f]+}} test_mm256_i32gather_pd
-// CHECK-NEXT: + Spawn {{[0-9a-f]+}} test_mm256_i32gather_pd
-// CHECK-NEXT: * Write {{[0-9a-f]+}} test_mm256_i32gather_pd
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in test_mm256_i32gather_pd
+// CHECK-NEXT: + Spawn 0x{{[0-9a-f]+}} in test_mm256_i32gather_pd
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in test_mm256_i32gather_pd
 // CHECK: test_mm256_i32gather_pd: 101101.0
 
 // CHECK: Race detected
-// CHECK-NEXT: * Read {{[0-9a-f]+}} test_mm_mask_i32gather_pd
-// CHECK-NEXT: + Spawn {{[0-9a-f]+}} test_mm_mask_i32gather_pd
-// CHECK-NEXT: * Write {{[0-9a-f]+}} test_mm_mask_i32gather_pd
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in test_mm_mask_i32gather_pd
+// CHECK-NEXT: + Spawn 0x{{[0-9a-f]+}} in test_mm_mask_i32gather_pd
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in test_mm_mask_i32gather_pd
 // CHECK: test_mm_mask_i32gather_pd: 100.0
 
 // CHECK: Race detected
-// CHECK-NEXT: * Read {{[0-9a-f]+}} test_mm256_mask_i32gather_pd
-// CHECK-NEXT: + Spawn {{[0-9a-f]+}} test_mm256_mask_i32gather_pd
-// CHECK-NEXT: * Write {{[0-9a-f]+}} test_mm256_mask_i32gather_pd
+// CHECK-NEXT: * Read 0x{{[0-9a-f]+}} in test_mm256_mask_i32gather_pd
+// CHECK-NEXT: + Spawn 0x{{[0-9a-f]+}} in test_mm256_mask_i32gather_pd
+// CHECK-NEXT: * Write 0x{{[0-9a-f]+}} in test_mm256_mask_i32gather_pd
 // CHECK: test_mm256_mask_i32gather_pd: 1001.0
 
 // CHECK: Cilksan detected 8 distinct races.
