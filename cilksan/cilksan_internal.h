@@ -199,6 +199,27 @@ public:
     return base;
   }
 
+  void *create_reducer_view_0s(hyper_table *__restrict__ reducer_views,
+                               reducer_base *key, cilk::view_size_fn size_fn,
+                               cilk::rb_identity_fn ident_fn,
+                               cilk::rb_reduce_fn red_fn) {
+    // Create a new view and initialize it with the identity function.
+    size_t size = std::invoke(size_fn, key);
+    void *new_view = malloc(size);
+    DBG_TRACE(REDUCER, "create_reducer_view_0s(%p): created view %p -> %p\n",
+              (void *)reducer_views, (void *)key, new_view);
+    mark_alloc(new_view, size);
+    reducer_base *base = std::invoke(ident_fn, key, new_view);
+    // Insert the new view into the local hypertable.
+    hyper_table::bucket new_bucket = {
+        .key = (uintptr_t)key, .data = {.view = new_view, .extra = red_fn}};
+    [[maybe_unused]] bool success = reducer_views->insert(new_bucket);
+    assert(success && "create_reducer_view failed to insert new reducer.");
+
+    // Return the new view.
+    return base;
+  }
+
   void *create_reducer_view_1(hyper_table *__restrict__ reducer_views,
                               uintptr_t key,
                               const reducer_callbacks &callbacks) {

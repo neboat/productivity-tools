@@ -19,7 +19,7 @@ using cilk::reduce_fn;
 
 template <typename ExtraTy>
 static void reducer_register(const csi_id_t call_id, unsigned MAAP_count,
-                             void *key, ExtraTy *extra) {
+                             void *key, ExtraTy extra) {
   for (unsigned i = 0; i < MAAP_count; ++i)
     MAAPs.pop();
 
@@ -66,6 +66,14 @@ __csan_llvm_reducer_register(const csi_id_t call_id, const csi_id_t func_id,
     default:
       cilksan_assert(false && "Unknown reducer type in reducer_register");
   }
+}
+
+CILKSAN_API void
+__csan_llvm_reducer_register_0(const csi_id_t call_id, const csi_id_t func_id,
+                              unsigned MAAP_count, const call_prop_t prop,
+                              void *key, cilk::rb_reduce_fn data) {
+  START_HOOK(call_id);
+  reducer_register(call_id, MAAP_count, key, data);
 }
 
 CILKSAN_API void __csan_llvm_reducer_unregister(const csi_id_t call_id,
@@ -136,6 +144,20 @@ CILKSAN_API void *__csan_llvm_hyper_lookup_0(const csi_id_t call_id,
     return result.first;
   // Create and return a new reducer view.
   return CilkSanImpl.create_reducer_view_0(result.second, key);
+}
+
+CILKSAN_API void *__csan_llvm_hyper_lookup_0s(
+    const csi_id_t call_id, const csi_id_t func_id, unsigned MAAP_count,
+    const call_prop_t prop, void *view, reducer_base *key,
+    cilk::view_size_fn size_fn, cilk::rb_identity_fn ident_fn,
+    cilk::rb_reduce_fn red_fn) {
+  auto result =
+      hyper_lookup_common(call_id, func_id, MAAP_count, prop, view, key);
+  if (result.first || result.second == nullptr)
+    return result.first;
+  // Create and return a new reducer view.
+  return CilkSanImpl.create_reducer_view_0s(result.second, key,
+                                            size_fn, ident_fn, red_fn);
 }
 
 CILKSAN_API void *
@@ -229,6 +251,13 @@ void CilkSanImpl_t::reduce_local_views() {
         reducer_base *right_r = std::get<reducer_base *>(rd.extra);
         leftmost->reduce(left_r, right_r);
         right_r->~reducer_base();
+      } else if (std::holds_alternative<cilk::rb_reduce_fn>(rd.extra)) {
+        std::invoke(
+            std::get<cilk::rb_reduce_fn>(rd.extra),
+            static_cast<reducer_base *>(reinterpret_cast<void *>(b.key)),
+            static_cast<reducer_base *>(left_view),
+            static_cast<reducer_base *>(right_view));
+        static_cast<reducer_base *>(right_view)->~reducer_base();
       } else if (std::holds_alternative<const cilk::reduce_fn *>(rd.extra)) {
         (*std::get<const cilk::reduce_fn *>(rd.extra))(left_view, right_view);
       } else {
@@ -266,6 +295,13 @@ void hyper_table::bucket::reduce(bucket *left, bucket *right) {
     reducer_base *right_r = std::get<reducer_base *>(right->data.extra);
     leftmost->reduce(left_r, right_r);
     right_r->~reducer_base();
+  } else if (std::holds_alternative<cilk::rb_reduce_fn>(left->data.extra)) {
+    std::invoke(
+        std::get<cilk::rb_reduce_fn>(left->data.extra),
+        static_cast<reducer_base *>(reinterpret_cast<void *>(left->key)),
+        static_cast<reducer_base *>(left_view),
+        static_cast<reducer_base *>(right_view));
+    static_cast<reducer_base *>(right_view)->~reducer_base();
   } else if (std::holds_alternative<const cilk::reduce_fn *>(
                  left->data.extra)) {
     (*std::get<const cilk::reduce_fn *>(left->data.extra))(left_view,
